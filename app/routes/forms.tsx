@@ -31,11 +31,11 @@ export async function loader({ context, request }: Route.LoaderArgs) {
     return redirect("/setup")
   }
 
-  // If we're at exactly /forms (with or without trailing slash) and forms exist, redirect to first form's submissions
+  // If we're at exactly /forms (with or without trailing slash), redirect to dashboard
   const url = new URL(request.url)
   const pathname = url.pathname.replace(/\/$/, "") // Remove trailing slash
   if (pathname === "/forms") {
-    return redirect(`/forms/${forms[0].id}/submissions`)
+    return redirect("/forms/dashboard")
   }
 
   return { forms, user }

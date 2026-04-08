@@ -41,6 +41,10 @@ export default function IntegrationPage() {
   <input type="text" name="name" placeholder="Your Name" required />
   <input type="email" name="email" placeholder="Your Email" required />
   <textarea name="message" placeholder="Your Message"></textarea>
+
+  <!-- Optional: redirect user after submission -->
+  <input type="hidden" name="_redirect" value="https://yoursite.com/thanks" />
+
   <button type="submit">Submit</button>
 </form>`
 
@@ -302,6 +306,30 @@ function ContactForm() {
               </div>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Redirect After Submission</CardTitle>
+          <CardDescription>
+            Control where users go after submitting your form.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md bg-muted p-3">
+              <p className="font-medium mb-1">Option 1: Hidden field</p>
+              <code className="text-xs">{'<input type="hidden" name="_redirect" value="https://yoursite.com/thanks" />'}</code>
+            </div>
+            <div className="rounded-md bg-muted p-3">
+              <p className="font-medium mb-1">Option 2: Query parameter</p>
+              <code className="text-xs break-all">{formEndpoint}?redirect=https://yoursite.com/thanks</code>
+            </div>
+            <p className="text-muted-foreground">
+              If no redirect is specified, users will see the default success page with a "Go Back" button.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router"
+import { useLoaderData, Link } from "react-router"
 import type { Route } from "./+types/forms.dashboard"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart"
@@ -265,8 +265,12 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {perFormStats.map((form) => (
-                    <tr key={form.id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 font-medium">{form.name}</td>
+                    <tr key={form.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors">
+                      <td className="py-2 pr-4 font-medium">
+                        <Link to={`/forms/${form.id}/submissions`} className="hover:underline">
+                          {form.name}
+                        </Link>
+                      </td>
                       <td className="py-2 px-4 text-right tabular-nums">{form.total}</td>
                       <td className="py-2 px-4 text-right tabular-nums">{form.thisWeek}</td>
                       <td className="py-2 pl-4 text-right tabular-nums">{form.thisMonth}</td>

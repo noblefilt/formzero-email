@@ -80,12 +80,17 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     const submissionId = crypto.randomUUID();
     const createdAt = Date.now();
 
+    // Extract _redirect from submission data (hidden field) and remove from stored data
+    const formRedirectUrl = submissionData._redirect as string | undefined;
+    const cleanedData = { ...submissionData };
+    delete cleanedData._redirect;
+
     // Store submission in database
     await db
       .prepare(
         "INSERT INTO submissions (id, form_id, data, created_at) VALUES (?, ?, ?, ?)"
       )
-      .bind(submissionId, formId, JSON.stringify(submissionData), createdAt)
+      .bind(submissionId, formId, JSON.stringify(cleanedData), createdAt)
       .run();
 
     // Send email notification asynchronously (don't await to avoid blocking response)
@@ -151,16 +156,16 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       );
     } else {
       // Handle redirect for HTML form submissions
+      // Priority: ?redirect= query param > _redirect hidden field > success page
       const url = new URL(request.url);
       const redirectParam = url.searchParams.get("redirect");
-      const referer = request.headers.get("referer");
 
       let redirectUrl: string;
 
       if (redirectParam) {
         redirectUrl = redirectParam;
-      } else if (referer) {
-        redirectUrl = referer;
+      } else if (formRedirectUrl) {
+        redirectUrl = formRedirectUrl;
       } else {
         redirectUrl = "/success";
       }

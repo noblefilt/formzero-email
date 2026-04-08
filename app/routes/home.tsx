@@ -11,7 +11,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
       headers: request.headers
   });
   if (session?.user) {
-    return redirect("/forms");
+    return redirect("/forms/dashboard");
   }
 
   return redirect("/login");

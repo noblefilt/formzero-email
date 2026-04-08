@@ -22,7 +22,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       headers: request.headers
   });
   if (session?.user) {
-    throw redirect("/forms");
+    throw redirect("/forms/dashboard");
   }
 
   // Redirect to signup if no users exist
@@ -43,7 +43,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const { error: signInError } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/forms"
+      callbackURL: "/forms/dashboard"
     });
 
     if (signInError) {
@@ -51,7 +51,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     }
 
     // Success - redirect to forms
-    return redirect("/forms");
+    return redirect("/forms/dashboard");
   } catch (err) {
     return { error: "Failed to login. Please try again." };
   }

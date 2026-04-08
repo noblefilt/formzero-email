@@ -22,7 +22,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       headers: request.headers
   });
   if (session?.user) {
-    return redirect("/forms");
+    return redirect("/forms/dashboard");
   }
 
   // Redirect to login if users already exist
@@ -51,7 +51,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       email,
       password,
       name,
-      callbackURL: "/forms"
+      callbackURL: "/forms/dashboard"
     });
 
     if (signUpError) {
@@ -59,7 +59,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     }
 
     // Success - redirect to forms
-    return redirect("/forms");
+    return redirect("/forms/dashboard");
   } catch (err) {
     return { error: "Failed to create account. Please try again." };
   }
