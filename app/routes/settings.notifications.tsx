@@ -31,7 +31,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     } catch (error) {
       console.error("Error clearing settings:", error)
       return data(
-        { success: false, error: "Failed to clear settings" },
+        { success: false, error: "清除设置失败" },
         { status: 500 }
       )
     }
@@ -40,7 +40,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   // Handle POST request - save settings
   if (request.method !== "POST") {
     return data(
-      { success: false, error: "Method not allowed" },
+      { success: false, error: "不支持的请求方法" },
       { status: 405 }
     )
   }
@@ -56,7 +56,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     // Validate required fields
     if (!notification_email || !notification_email_password || !smtp_host || !smtp_port) {
       return data(
-        { success: false, error: "Missing required fields" },
+        { success: false, error: "缺少必填字段" },
         { status: 400 }
       )
     }
@@ -117,7 +117,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   } catch (error) {
     console.error("Error saving settings:", error)
     return data(
-      { success: false, error: "Failed to save settings" },
+      { success: false, error: "保存设置失败" },
       { status: 500 }
     )
   }

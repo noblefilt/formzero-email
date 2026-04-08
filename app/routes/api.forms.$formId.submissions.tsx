@@ -76,6 +76,41 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       return redirect("/error?error=unsupported_content_type");
     }
 
+    // --- Honeypot spam protection ---
+    // If _gotcha field has a value, silently reject (bots fill all fields)
+    if (submissionData._gotcha) {
+      // Return fake success to not alert bots
+      if (isJsonRequest) {
+        return data(
+          { success: true, id: crypto.randomUUID() },
+          { status: 201, headers: corsHeaders }
+        );
+      }
+      return redirect("/success", 303);
+    }
+
+    // --- IP-based rate limiting ---
+    const clientIP = request.headers.get("cf-connecting-ip")
+      || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || "unknown";
+    const rateLimitWindow = Date.now() - 60 * 1000; // 1 minute window
+    const recentSubmissions = await db
+      .prepare(
+        "SELECT COUNT(*) as cnt FROM submissions WHERE form_id = ? AND created_at > ? AND ip_address = ?"
+      )
+      .bind(formId, rateLimitWindow, clientIP)
+      .first<{ cnt: number }>();
+
+    if (recentSubmissions && recentSubmissions.cnt >= 5) {
+      if (isJsonRequest) {
+        return data(
+          { success: false, error: "Too many requests. Please try again later." },
+          { status: 429, headers: corsHeaders }
+        );
+      }
+      return redirect("/error?error=rate_limited");
+    }
+
     // Generate submission ID and timestamp
     const submissionId = crypto.randomUUID();
     const createdAt = Date.now();
@@ -84,13 +119,14 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     const formRedirectUrl = submissionData._redirect as string | undefined;
     const cleanedData = { ...submissionData };
     delete cleanedData._redirect;
+    delete cleanedData._gotcha;
 
     // Store submission in database
     await db
       .prepare(
-        "INSERT INTO submissions (id, form_id, data, created_at) VALUES (?, ?, ?, ?)"
+        "INSERT INTO submissions (id, form_id, data, created_at, ip_address) VALUES (?, ?, ?, ?, ?)"
       )
-      .bind(submissionId, formId, JSON.stringify(cleanedData), createdAt)
+      .bind(submissionId, formId, JSON.stringify(cleanedData), createdAt, clientIP)
       .run();
 
     // Send email notification asynchronously (don't await to avoid blocking response)
@@ -98,48 +134,74 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     context.cloudflare.ctx.waitUntil(
       (async () => {
         try {
-          // Fetch global settings
-          const globalSettings = await db
+          // Fetch form details including per-form email settings
+          const formRecord = await db
             .prepare(
-              "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
+              "SELECT name, notification_email, notification_email_password, smtp_host, smtp_port FROM forms WHERE id = ?"
             )
+            .bind(formId)
             .first<{
+              name: string
               notification_email: string | null
               notification_email_password: string | null
               smtp_host: string | null
               smtp_port: number | null
             }>();
 
-          // Check if email notifications are configured
-          if (
-            globalSettings?.notification_email &&
-            globalSettings?.notification_email_password &&
-            globalSettings?.smtp_host &&
-            globalSettings?.smtp_port
-          ) {
-            // Fetch form name for email
-            const formData = await db
-              .prepare("SELECT name FROM forms WHERE id = ?")
-              .bind(formId)
-              .first<{ name: string }>();
+          if (!formRecord) return;
 
-            if (formData) {
-              // Type-safe email config (null checks already done above)
-              const emailConfig: EmailConfig = {
+          // Check per-form email settings first, then fall back to global
+          let emailConfig: EmailConfig | null = null;
+
+          if (
+            formRecord.notification_email &&
+            formRecord.notification_email_password &&
+            formRecord.smtp_host &&
+            formRecord.smtp_port
+          ) {
+            // Use per-form email settings
+            emailConfig = {
+              notification_email: formRecord.notification_email,
+              notification_email_password: formRecord.notification_email_password,
+              smtp_host: formRecord.smtp_host,
+              smtp_port: formRecord.smtp_port,
+            };
+          } else {
+            // Fall back to global settings
+            const globalSettings = await db
+              .prepare(
+                "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
+              )
+              .first<{
+                notification_email: string | null
+                notification_email_password: string | null
+                smtp_host: string | null
+                smtp_port: number | null
+              }>();
+
+            if (
+              globalSettings?.notification_email &&
+              globalSettings?.notification_email_password &&
+              globalSettings?.smtp_host &&
+              globalSettings?.smtp_port
+            ) {
+              emailConfig = {
                 notification_email: globalSettings.notification_email,
                 notification_email_password: globalSettings.notification_email_password,
                 smtp_host: globalSettings.smtp_host,
                 smtp_port: globalSettings.smtp_port,
               };
-
-              await sendSubmissionNotification(emailConfig, {
-                id: submissionId,
-                formId: formId,
-                formName: formData.name,
-                data: submissionData,
-                createdAt: createdAt,
-              });
             }
+          }
+
+          if (emailConfig) {
+            await sendSubmissionNotification(emailConfig, {
+              id: submissionId,
+              formId: formId,
+              formName: formRecord.name,
+              data: cleanedData,
+              createdAt: createdAt,
+            });
           }
         } catch (error) {
           // Log error but don't fail the request

@@ -61,7 +61,7 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
         <FormSwitcher forms={forms} />
       </SidebarHeader>
       <SidebarContent>
-        <FormNav />
+        <FormNav forms={forms} />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
@@ -87,11 +87,11 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
               >
                 <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                   <Settings />
-                  Settings
+                  设置
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut />
-                  Log out
+                  退出登录
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

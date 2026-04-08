@@ -10,7 +10,7 @@ export async function action({ context, request }: Route.ActionArgs) {
 
   if (request.method !== "POST") {
     return data(
-      { success: false, error: "Method not allowed" },
+      { success: false, error: "不支持的请求方法" },
       { status: 405 }
     )
   }
@@ -26,7 +26,7 @@ export async function action({ context, request }: Route.ActionArgs) {
     // Validate required fields
     if (!notification_email || !notification_email_password || !smtp_host || !smtp_port) {
       return data(
-        { success: false, error: "Missing required fields" },
+        { success: false, error: "缺少必填字段" },
         { status: 400 }
       )
     }
@@ -54,7 +54,7 @@ export async function action({ context, request }: Route.ActionArgs) {
     console.error("Error testing email settings:", error)
 
     return data(
-      { success: false, error: "Failed to send test email" },
+      { success: false, error: "发送测试邮件失败" },
       { status: 500 }
     )
   }

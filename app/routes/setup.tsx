@@ -7,8 +7,8 @@ import { getAuth } from "~/lib/auth.server"
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: "Create Your First Form | FormZero" },
-    { name: "description", content: "Create your first form to start collecting submissions" },
+    { title: "创建您的第一个表单 | FormZero" },
+    { name: "description", content: "创建表单开始收集提交数据" },
   ];
 };
 
@@ -45,10 +45,10 @@ export default function Setup() {
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold">
-              Create Your First Form
+              创建您的第一个表单
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Start collecting submissions in seconds
+              几秒钟即可开始收集表单数据
             </p>
           </div>
         </div>
@@ -57,12 +57,12 @@ export default function Setup() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">
-                Form Name
+                表单名称
               </Label>
               <Input
                 id="name"
                 name="name"
-                placeholder="Contact Form"
+                placeholder="联系表单"
                 required
                 autoFocus
               />
@@ -79,7 +79,7 @@ export default function Setup() {
             disabled={fetcher.state === "submitting"}
             className="w-full"
           >
-            {fetcher.state === "submitting" ? "Creating..." : "Create Form"}
+            {fetcher.state === "submitting" ? "创建中..." : "创建表单"}
           </Button>
         </fetcher.Form>
       </div>

@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns"
-import { Trash2, Clock, Copy, Check } from "lucide-react"
+import { zhCN } from "date-fns/locale"
+import { Trash2, Clock, Copy, Check, Star, Archive, ArchiveRestore } from "lucide-react"
 import { useState } from "react"
 import type { Submission } from "./columns"
 import {
@@ -18,6 +19,8 @@ interface DetailPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onDelete: (id: string) => void
+  onToggleStar?: (id: string) => void
+  onToggleArchive?: (id: string) => void
   isDeleting?: boolean
 }
 
@@ -26,6 +29,8 @@ export function DetailPanel({
   open,
   onOpenChange,
   onDelete,
+  onToggleStar,
+  onToggleArchive,
   isDeleting,
 }: DetailPanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -33,8 +38,8 @@ export function DetailPanel({
   if (!submission) return null
 
   const date = new Date(submission.created_at)
-  const relativeTime = formatDistanceToNow(date, { addSuffix: true })
-  const exactTime = date.toLocaleString(undefined, {
+  const relativeTime = formatDistanceToNow(date, { addSuffix: true, locale: zhCN })
+  const exactTime = date.toLocaleString('zh-CN', {
     dateStyle: "full",
     timeStyle: "medium",
   })
@@ -46,7 +51,7 @@ export function DetailPanel({
   }
 
   const handleDelete = () => {
-    if (!confirm("Are you sure you want to delete this submission? This action cannot be undone.")) return
+    if (!confirm("确定要删除此提交数据吗？此操作不可撤销。")) return
     onDelete(submission.id)
     onOpenChange(false)
   }
@@ -57,7 +62,7 @@ export function DetailPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Submission Details</SheetTitle>
+          <SheetTitle>提交详情</SheetTitle>
           <SheetDescription className="flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
             <span>{relativeTime}</span>
@@ -68,7 +73,7 @@ export function DetailPanel({
 
         <div className="flex-1 px-4 space-y-1">
           {dataEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No data fields in this submission.</p>
+            <p className="text-sm text-muted-foreground py-4">此提交数据没有字段。</p>
           ) : (
             dataEntries.map(([key, value]) => {
               const displayValue = value !== undefined && value !== null ? String(value) : ""
@@ -100,7 +105,7 @@ export function DetailPanel({
                       {displayValue}
                     </p>
                   ) : (
-                    <p className="text-sm font-medium">{displayValue || <span className="text-muted-foreground italic">Empty</span>}</p>
+                    <p className="text-sm font-medium">{displayValue || <span className="text-muted-foreground italic">空</span>}</p>
                   )}
                 </div>
               )
@@ -115,6 +120,27 @@ export function DetailPanel({
             ID: {submission.id}
           </div>
           <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleStar?.(submission.id)}
+            className="gap-1.5"
+          >
+            <Star className={`h-3.5 w-3.5 ${submission.is_starred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+            {submission.is_starred ? "取消星标" : "星标"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleArchive?.(submission.id)}
+            className="gap-1.5"
+          >
+            {submission.is_archived ? (
+              <><ArchiveRestore className="h-3.5 w-3.5" />取消归档</>
+            ) : (
+              <><Archive className="h-3.5 w-3.5" />归档</>
+            )}
+          </Button>
+          <Button
             variant="destructive"
             size="sm"
             onClick={handleDelete}
@@ -122,7 +148,7 @@ export function DetailPanel({
             className="gap-1.5"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? "删除中..." : "删除"}
           </Button>
         </SheetFooter>
       </SheetContent>

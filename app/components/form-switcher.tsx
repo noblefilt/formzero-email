@@ -65,7 +65,7 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
               <img src="/favicon.svg" alt="" className="size-8 rounded-lg" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{activeForm.name}</span>
-                <span className="truncate text-xs">{activeForm.submission_count !== undefined ? `${activeForm.submission_count} submissions` : activeForm.id}</span>
+                <span className="truncate text-xs">{activeForm.submission_count !== undefined ? `${activeForm.submission_count} 条提交` : activeForm.id}</span>
               </div>
               <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>
@@ -77,7 +77,7 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Forms
+              表单列表
             </DropdownMenuLabel>
             {forms.map((form) => (
               <DropdownMenuItem
@@ -122,7 +122,7 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <Plus className="size-4" />
               </div>
-              <div className="text-muted-foreground font-medium">Add form</div>
+              <div className="text-muted-foreground font-medium">新建表单</div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -131,19 +131,19 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Form</DialogTitle>
+            <DialogTitle>新建表单</DialogTitle>
             <DialogDescription>
-              Create a new form to start collecting submissions.
+              创建新表单开始收集提交数据。
             </DialogDescription>
           </DialogHeader>
           <fetcher.Form method="post" action="/forms">
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Form Name</Label>
+                <Label htmlFor="name">表单名称</Label>
                 <Input
                   id="name"
                   name="name"
-                  placeholder="Contact Form"
+                  placeholder="联系表单"
                   required
                 />
                 {fetcher.data && "error" in fetcher.data && (
@@ -157,10 +157,10 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Cancel
+                取消
               </Button>
               <Button type="submit" disabled={fetcher.state === "submitting"}>
-                {fetcher.state === "submitting" ? "Creating..." : "Create Form"}
+                {fetcher.state === "submitting" ? "创建中..." : "创建表单"}
               </Button>
             </DialogFooter>
           </fetcher.Form>
@@ -170,9 +170,9 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Form</DialogTitle>
+            <DialogTitle>重命名表单</DialogTitle>
             <DialogDescription>
-              Change the display name of "{targetForm?.name}".
+              修改 "{targetForm?.name}" 的显示名称。
             </DialogDescription>
           </DialogHeader>
           <actionFetcher.Form method="post" action="/forms">
@@ -180,7 +180,7 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
             <input type="hidden" name="formId" value={targetForm?.id || ""} />
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="rename-name">New Name</Label>
+                <Label htmlFor="rename-name">新名称</Label>
                 <Input
                   id="rename-name"
                   name="name"
@@ -191,10 +191,10 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
-                Cancel
+                取消
               </Button>
               <Button type="submit" disabled={actionFetcher.state === "submitting"}>
-                {actionFetcher.state === "submitting" ? "Renaming..." : "Rename"}
+                {actionFetcher.state === "submitting" ? "重命名中..." : "重命名"}
               </Button>
             </DialogFooter>
           </actionFetcher.Form>
@@ -204,14 +204,14 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Form</DialogTitle>
+            <DialogTitle>删除表单</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{targetForm?.name}"? This will also delete all {targetForm?.submission_count || 0} submission(s). This action cannot be undone.
+              确定要删除 "{targetForm?.name}" 吗？这将同时删除其下所有 {targetForm?.submission_count || 0} 条提交数据，此操作不可撤销。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              取消
             </Button>
             <Button
               variant="destructive"
@@ -225,7 +225,7 @@ export function FormSwitcher({ forms }: FormSwitcherProps) {
                 setIsDeleteDialogOpen(false)
               }}
             >
-              {actionFetcher.state === "submitting" ? "Deleting..." : "Delete Form"}
+              {actionFetcher.state === "submitting" ? "删除中..." : "删除表单"}
             </Button>
           </DialogFooter>
         </DialogContent>

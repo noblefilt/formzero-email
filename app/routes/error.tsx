@@ -3,15 +3,19 @@ import type { Route } from "./+types/error";
 const errorMessages = {
   form_not_found: {
     title: "Form Not Found",
-    description: "The form you're trying to submit to doesn't exist. Please check the form URL and try again.",
+    description: "The form you are trying to submit to does not exist.",
   },
   internal_error: {
-    title: "Something Went Wrong",
-    description: "We encountered an error while processing your submission. Please try again later.",
+    title: "Internal Error",
+    description: "An error occurred while processing your submission.",
   },
   unsupported_content_type: {
-    title: "Unsupported Format",
-    description: "The format of your submission is not supported. Please check your form configuration.",
+    title: "Unsupported Content Type",
+    description: "The content type of your request is not supported.",
+  },
+  rate_limited: {
+    title: "Too Many Requests",
+    description: "You are submitting too frequently. Please try again later.",
   },
 } as const;
 
@@ -37,12 +41,12 @@ export default function Error({ loaderData }: Route.ComponentProps) {
   const { errorData } = loaderData;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="max-w-md w-full rounded-lg border bg-card p-8 shadow-sm">
         <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
             <svg
-              className="h-6 w-6 text-red-600"
+              className="h-6 w-6 text-red-600 dark:text-red-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -56,12 +60,20 @@ export default function Error({ loaderData }: Route.ComponentProps) {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold mb-2">
             {errorData.title}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             {errorData.description}
           </p>
+          <div className="mt-6">
+            <a
+              href="javascript:history.back()"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              Go Back
+            </a>
+          </div>
         </div>
       </div>
     </div>

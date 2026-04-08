@@ -89,7 +89,7 @@ export function DataTable<TData extends { id: string }, TValue>({
     <div className="space-y-2 min-w-0">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Search submissions..."
+          placeholder="搜索提交数据..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
@@ -166,7 +166,7 @@ export function DataTable<TData extends { id: string }, TValue>({
                   colSpan={columns.length + (onSelectedIdsChange ? 1 : 0)}
                   className="h-24 text-center"
                 >
-                  No submissions yet.
+                  暂无提交数据。
                 </TableCell>
               </TableRow>
             )}
@@ -175,10 +175,10 @@ export function DataTable<TData extends { id: string }, TValue>({
       </div>
       <div className="text-muted-foreground text-sm">
         {selectedIds.length > 0
-          ? `${selectedIds.length} of ${data.length} selected`
+          ? `已选择 ${selectedIds.length} / ${data.length} 条`
           : filteredData.length === data.length
-            ? `${data.length} total submission(s)`
-            : `${filteredData.length} of ${data.length} submission(s)`}
+            ? `共 ${data.length} 条提交数据`
+            : `显示 ${filteredData.length} / ${data.length} 条`}
       </div>
     </div>
   )

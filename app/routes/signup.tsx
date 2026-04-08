@@ -8,8 +8,8 @@ import { authClient } from "#/lib/auth.client";
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: "Sign Up | FormZero" },
-    { name: "description", content: "Create your FormZero account" },
+    { title: "注册 | FormZero" },
+    { name: "description", content: "创建您的 FormZero 账户" },
   ];
 };
 
@@ -43,7 +43,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   // Validate passwords match
   if (password !== confirmPassword) {
-    return { error: "Passwords do not match" };
+    return { error: "两次密码输入不一致" };
   }
 
   try {
@@ -55,13 +55,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     });
 
     if (signUpError) {
-      return { error: signUpError.message || "Failed to create account" };
+      return { error: signUpError.message || "创建账户失败" };
     }
 
     // Success - redirect to forms
     return redirect("/forms/dashboard");
   } catch (err) {
-    return { error: "Failed to create account. Please try again." };
+    return { error: "创建账户失败，请重试" };
   }
 }
 
@@ -74,29 +74,29 @@ export default function Signup() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to FormZero</h1>
+          <h1 className="text-3xl font-bold">欢迎使用 FormZero</h1>
           <p className="mt-2 text-muted-foreground">
-            Create your account to get started
+            创建账户开始使用
           </p>
         </div>
 
         <Form method="post" className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">姓名</Label>
               <Input
                 id="name"
                 name="name"
                 type="text"
                 required
-                placeholder="Your name"
+                placeholder="请输入姓名"
                 autoComplete="name"
                 disabled={isSubmitting}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">邮箱</Label>
               <Input
                 id="email"
                 name="email"
@@ -109,13 +109,13 @@ export default function Signup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密码</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
                 required
-                placeholder="At least 8 characters"
+                placeholder="至少 8 个字符"
                 minLength={8}
                 autoComplete="new-password"
                 disabled={isSubmitting}
@@ -123,13 +123,13 @@ export default function Signup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">确认密码</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 required
-                placeholder="Re-enter your password"
+                placeholder="再次输入密码"
                 minLength={8}
                 autoComplete="new-password"
                 disabled={isSubmitting}
@@ -138,7 +138,7 @@ export default function Signup() {
           </div>
 
           <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-            <strong>Important:</strong> Please remember your password. Password recovery is not available yet.
+            <strong>重要提示：</strong>请牢记您的密码，目前暂不支持密码找回。
           </div>
 
           {actionData?.error && (
@@ -148,7 +148,7 @@ export default function Signup() {
           )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Creating Account..." : "Create Account"}
+            {isSubmitting ? "创建中..." : "创建账户"}
           </Button>
         </Form>
       </div>

@@ -17,8 +17,8 @@ import { requireAuth } from "~/lib/require-auth.server";
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: `Form | FormZero` },
-    { name: "description", content: "Manage your form submissions" },
+    { title: `表单 | FormZero` },
+    { name: "description", content: "管理您的表单提交数据" },
   ];
 };
 
@@ -53,7 +53,12 @@ export default function FormLayout() {
 
   const pathSegments = location.pathname.split("/").filter(Boolean)
   const currentPage = pathSegments[pathSegments.length - 1];
-  const pageTitle = currentPage.charAt(0).toUpperCase() + currentPage.slice(1)
+  const pageTitleMap: Record<string, string> = {
+    submissions: "提交数据",
+    integration: "集成",
+    dashboard: "仪表盘",
+  }
+  const pageTitle = pageTitleMap[currentPage] || (currentPage.charAt(0).toUpperCase() + currentPage.slice(1))
 
   return (<>
     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

@@ -8,8 +8,8 @@ import { authClient } from "#/lib/auth.client";
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: "Login | FormZero" },
-    { name: "description", content: "Sign in to your FormZero account" },
+    { title: "登录 | FormZero" },
+    { name: "description", content: "登录您的 FormZero 账户" },
   ];
 };
 
@@ -47,13 +47,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     });
 
     if (signInError) {
-      return { error: signInError.message || "Invalid email or password" };
+      return { error: signInError.message || "邮箱或密码错误" };
     }
 
     // Success - redirect to forms
     return redirect("/forms/dashboard");
   } catch (err) {
-    return { error: "Failed to login. Please try again." };
+    return { error: "登录失败，请重试" };
   }
 }
 
@@ -66,16 +66,16 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome Back</h1>
+          <h1 className="text-3xl font-bold">欢迎回来</h1>
           <p className="mt-2 text-muted-foreground">
-            Sign in to access your form backend
+            登录以管理您的表单
           </p>
         </div>
 
         <Form method="post" className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">邮箱</Label>
               <Input
                 id="email"
                 name="email"
@@ -88,13 +88,13 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密码</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
                 required
-                placeholder="Your password"
+                placeholder="请输入密码"
                 autoComplete="current-password"
                 disabled={isSubmitting}
               />
@@ -108,7 +108,7 @@ export default function Login() {
           )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Signing In..." : "Sign In"}
+            {isSubmitting ? "登录中..." : "登录"}
           </Button>
         </Form>
       </div>

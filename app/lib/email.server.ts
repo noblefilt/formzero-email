@@ -23,8 +23,8 @@ export async function sendTestEmail(
     const info = await transporter.sendMail({
       from: config.notification_email,
       to: config.notification_email,
-      subject: "FormZero - Test Email",
-      text: "This is a test email from FormZero. Your SMTP settings are working correctly!",
+      subject: "FormZero - 测试邮件",
+      text: "这是一封来自 FormZero 的测试邮件。您的 SMTP 设置已正确配置！",
       html: `
 <!DOCTYPE html>
 <html>
@@ -43,7 +43,7 @@ export async function sendTestEmail(
           <tr>
             <td style="background-color: #252525; padding: 32px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">
               <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
-                Test Email
+                测试邮件
               </h1>
             </td>
           </tr>
@@ -52,10 +52,10 @@ export async function sendTestEmail(
           <tr>
             <td style="padding: 32px;">
               <p style="margin: 0 0 16px 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                This is a test email from <strong>FormZero</strong>.
+                这是一封来自 <strong>FormZero</strong> 的测试邮件。
               </p>
               <p style="margin: 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                Your SMTP settings are working correctly!
+                您的 SMTP 设置已正确配置！
               </p>
             </td>
           </tr>
@@ -64,7 +64,7 @@ export async function sendTestEmail(
           <tr>
             <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #ebebeb;">
               <p style="margin: 0; color: #8e8e8e; font-size: 14px;">
-                Sent by <strong style="color: #595959;">FormZero</strong>
+                由 <strong style="color: #595959;">FormZero</strong> 发送
               </p>
             </td>
           </tr>
@@ -83,12 +83,12 @@ export async function sendTestEmail(
     console.error("Error sending test email:", error)
 
     // Provide more specific error message
-    let errorMessage = "Failed to send test email"
+    let errorMessage = "发送测试邮件失败"
     if (error instanceof Error) {
       if (error.message.includes("Invalid login")) {
-        errorMessage = "Invalid email or password"
+        errorMessage = "邮箱或密码错误"
       } else if (error.message.includes("ENOTFOUND") || error.message.includes("ECONNREFUSED")) {
-        errorMessage = "Cannot connect to SMTP server"
+        errorMessage = "无法连接到 SMTP 服务器"
       } else {
         errorMessage = error.message
       }
@@ -121,7 +121,7 @@ export async function sendSubmissionNotification(
     const submissionText = formatSubmissionDataText(submission.data)
 
     // Format timestamp
-    const timestamp = new Date(submission.createdAt).toLocaleString('en-US', {
+    const timestamp = new Date(submission.createdAt).toLocaleString('zh-CN', {
       dateStyle: 'full',
       timeStyle: 'long',
     })
@@ -130,24 +130,24 @@ export async function sendSubmissionNotification(
     await transporter.sendMail({
       from: config.notification_email,
       to: config.notification_email,
-      subject: `New Submission for "${submission.formName}"`,
+      subject: `「${submission.formName}」收到新提交`,
       text: `
-FormZero - New Form Submission
+FormZero - 新表单提交
 
-You have received a new submission for your form "${submission.formName}".
+您的表单「${submission.formName}」收到了一条新提交。
 
-SUBMISSION DETAILS
+提交详情
 ==================
-Form: ${submission.formName}
-Submission ID: ${submission.id}
-Received: ${timestamp}
+表单：${submission.formName}
+提交 ID：${submission.id}
+接收时间：${timestamp}
 
-SUBMITTED DATA
+提交数据
 ==============
 ${submissionText}
 
 ---
-This email was automatically sent by FormZero
+此邮件由 FormZero 自动发送
       `.trim(),
       html: `
 <!DOCTYPE html>
@@ -155,7 +155,7 @@ This email was automatically sent by FormZero
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Form Submission</title>
+  <title>新表单提交</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
@@ -167,7 +167,7 @@ This email was automatically sent by FormZero
           <tr>
             <td style="background-color: #252525; padding: 32px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">
               <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
-                New Form Submission
+                新表单提交
               </h1>
               <p style="margin: 8px 0 0 0; color: #b4b4b4; font-size: 16px;">
                 ${submission.formName}
@@ -181,18 +181,18 @@ This email was automatically sent by FormZero
 
               <!-- Introduction -->
               <p style="margin: 0 0 24px 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                You have received a new submission for your form <strong>${submission.formName}</strong>.
+                您的表单 <strong>${submission.formName}</strong> 收到了一条新提交。
               </p>
 
               <!-- Metadata -->
               <div style="background-color: #fafafa; border-left: 4px solid #252525; padding: 16px; margin-bottom: 32px; border-radius: 6px;">
                 <table width="100%" cellpadding="4" cellspacing="0">
                   <tr>
-                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">Submission ID:</td>
+                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">提交 ID：</td>
                     <td style="color: #252525; font-size: 14px; font-family: 'Courier New', monospace; padding: 4px 0;">${submission.id}</td>
                   </tr>
                   <tr>
-                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">Received:</td>
+                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">接收时间：</td>
                     <td style="color: #252525; font-size: 14px; padding: 4px 0;">${timestamp}</td>
                   </tr>
                 </table>
@@ -200,7 +200,7 @@ This email was automatically sent by FormZero
 
               <!-- Submission Data -->
               <h2 style="margin: 0 0 16px 0; color: #252525; font-size: 18px; font-weight: 600;">
-                Submitted Data
+                提交数据
               </h2>
 
               ${submissionHtml}
@@ -212,7 +212,7 @@ This email was automatically sent by FormZero
           <tr>
             <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #ebebeb;">
               <p style="margin: 0; color: #8e8e8e; font-size: 14px;">
-                Sent by <strong style="color: #595959;">FormZero</strong>
+                由 <strong style="color: #595959;">FormZero</strong> 发送
               </p>
             </td>
           </tr>
@@ -230,7 +230,7 @@ This email was automatically sent by FormZero
   } catch (error) {
     console.error("Error sending notification email:", error)
 
-    let errorMessage = "Failed to send notification email"
+    let errorMessage = "发送通知邮件失败"
     if (error instanceof Error) {
       errorMessage = error.message
     }
@@ -246,7 +246,7 @@ function formatSubmissionData(data: Record<string, any>): string {
   const entries = Object.entries(data)
 
   if (entries.length === 0) {
-    return '<p style="color: #8e8e8e; font-style: italic;">No data submitted</p>'
+    return '<p style="color: #8e8e8e; font-style: italic;">无提交数据</p>'
   }
 
   const rows = entries
@@ -284,7 +284,7 @@ function formatSubmissionDataText(data: Record<string, any>): string {
   const entries = Object.entries(data)
 
   if (entries.length === 0) {
-    return 'No data submitted'
+    return '无提交数据'
   }
 
   return entries
@@ -303,16 +303,16 @@ function formatSubmissionDataText(data: Record<string, any>): string {
  */
 function formatValue(value: any): string {
   if (value === null || value === undefined) {
-    return '<span style="color: #b4b4b4; font-style: italic;">Not provided</span>'
+    return '<span style="color: #b4b4b4; font-style: italic;">未提供</span>'
   }
 
   if (typeof value === 'boolean') {
-    return value ? '✓ Yes' : '✗ No'
+    return value ? '✓ 是' : '✗ 否'
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return '<span style="color: #b4b4b4; font-style: italic;">Empty list</span>'
+      return '<span style="color: #b4b4b4; font-style: italic;">空列表</span>'
     }
     return '<ul style="margin: 0; padding-left: 20px;">' +
       value.map(item => `<li>${escapeHtml(String(item))}</li>`).join('') +
@@ -344,16 +344,16 @@ function formatValue(value: any): string {
  */
 function formatValueText(value: any): string {
   if (value === null || value === undefined) {
-    return '(Not provided)'
+    return '(未提供)'
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
+    return value ? '是' : '否'
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return '(Empty list)'
+      return '(空列表)'
     }
     return '\n  - ' + value.map(item => String(item)).join('\n  - ')
   }

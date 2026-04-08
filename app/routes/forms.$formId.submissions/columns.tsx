@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Eye, Trash2 } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Eye, Trash2, Star, Archive, ArchiveRestore } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
 import { Button } from "#/components/ui/button"
 import {
   DropdownMenu,
@@ -20,6 +21,9 @@ export type Submission = {
   form_id: string
   data: Record<string, any>
   created_at: number
+  is_read: number
+  is_starred: number
+  is_archived: number
 }
 
 export function createColumns(
@@ -27,6 +31,8 @@ export function createColumns(
   options?: {
     onView?: (submission: Submission) => void
     onDelete?: (id: string) => void
+    onToggleStar?: (id: string) => void
+    onToggleArchive?: (id: string) => void
   }
 ): ColumnDef<Submission>[] {
   // Time column comes first
@@ -38,18 +44,20 @@ export function createColumns(
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Time
+          时间
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
     },
     cell: ({ row }) => {
       const timestamp = row.getValue("created_at") as number
+      const submission = row.original
       const date = new Date(timestamp)
       const relativeTime = formatDistanceToNow(date, {
         addSuffix: true,
+        locale: zhCN,
       })
-      const exactTime = date.toLocaleString(undefined, {
+      const exactTime = date.toLocaleString('zh-CN', {
         dateStyle: "medium",
         timeStyle: "medium",
       })
@@ -57,7 +65,8 @@ export function createColumns(
         <TooltipProvider delayDuration={1000}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="text-sm text-muted-foreground">
+              <div className={`text-sm flex items-center gap-1.5 ${!submission.is_read ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
+                {!submission.is_read && <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
                 {relativeTime}
               </div>
             </TooltipTrigger>
@@ -96,7 +105,7 @@ export function createColumns(
               variant="ghost"
               onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             >
-              Email
+              邮箱
               <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
           )
@@ -120,6 +129,28 @@ export function createColumns(
     }
   })
 
+  // Star column
+  const starColumn: ColumnDef<Submission> = {
+    id: "star",
+    header: "",
+    cell: ({ row }) => {
+      const submission = row.original
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.stopPropagation()
+            options?.onToggleStar?.(submission.id)
+          }}
+        >
+          <Star className={`h-4 w-4 ${submission.is_starred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40'}`} />
+        </Button>
+      )
+    },
+  }
+
   // Action column
   const actionColumn: ColumnDef<Submission> = {
     id: "actions",
@@ -130,25 +161,32 @@ export function createColumns(
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">打开菜单</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => options?.onView?.(submission)}>
               <Eye className="mr-2 h-4 w-4" />
-              View Details
+              查看详情
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => options?.onToggleArchive?.(submission.id)}>
+              {submission.is_archived ? (
+                <><ArchiveRestore className="mr-2 h-4 w-4" />取消归档</>
+              ) : (
+                <><Archive className="mr-2 h-4 w-4" />归档</>
+              )}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => {
-                if (confirm("Are you sure you want to delete this submission?")) {
+                if (confirm("确定要删除此提交数据吗？")) {
                   options?.onDelete?.(submission.id)
                 }
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              删除
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -156,5 +194,5 @@ export function createColumns(
     },
   }
 
-  return [timeColumn, ...dataColumns, actionColumn]
+  return [starColumn, timeColumn, ...dataColumns, actionColumn]
 }

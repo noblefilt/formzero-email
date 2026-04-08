@@ -19,8 +19,8 @@ import { SidebarTrigger } from "~/components/ui/sidebar"
 
 export const meta: Route.MetaFunction = () => {
   return [
-    { title: "Dashboard | FormZero" },
-    { name: "description", content: "Overview of all form submissions" },
+    { title: "仪表盘 | FormZero" },
+    { name: "description", content: "所有表单提交概览" },
   ];
 };
 
@@ -72,7 +72,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     ).length
 
     dailySubmissions.push({
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
       count,
     })
   }
@@ -100,14 +100,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 const lineChartConfig = {
   count: {
-    label: "Submissions",
+    label: "提交数据",
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig
 
 const barChartConfig = {
   total: {
-    label: "Total",
+    label: "总计",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
-              <BreadcrumbPage>Dashboard</BreadcrumbPage>
+              <BreadcrumbPage>仪表盘</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -141,24 +141,24 @@ export default function DashboardPage() {
     </header>
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">
       <div>
-        <h2 className="text-lg font-semibold">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Overview of all your forms and submissions</p>
+        <h2 className="text-lg font-semibold">仪表盘</h2>
+        <p className="text-sm text-muted-foreground">所有表单和提交数据概览</p>
       </div>
 
       <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4 min-w-0">
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Total Forms</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">表单总数</h3>
           <div className="flex items-end gap-2 mt-1">
             <p className="text-2xl font-bold">{stats.formCount}</p>
             <FileText className="h-4 w-4 text-muted-foreground mb-1" />
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Total Submissions</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">提交总数</h3>
           <p className="text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">This Week</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">本周</h3>
           <div className="flex items-end gap-2 mt-1">
             <p className="text-2xl font-bold">{stats.thisWeek}</p>
             <div className={`flex items-center gap-1 text-xs font-medium pb-0.5 ${stats.weekTrend > 0 ? 'text-green-600 dark:text-green-500' : stats.weekTrend < 0 ? 'text-red-600 dark:text-red-500' : 'text-muted-foreground'}`}>
@@ -168,7 +168,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">This Month</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">本月</h3>
           <div className="flex items-end gap-2 mt-1">
             <p className="text-2xl font-bold">{stats.thisMonth}</p>
             <div className={`flex items-center gap-1 text-xs font-medium pb-0.5 ${stats.monthTrend > 0 ? 'text-green-600 dark:text-green-500' : stats.monthTrend < 0 ? 'text-red-600 dark:text-red-500' : 'text-muted-foreground'}`}>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">All Submissions - Last 30 Days</CardTitle>
+          <CardTitle className="text-base">所有提交 - 近 30 天</CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
           <ChartContainer config={lineChartConfig} className="h-[180px] w-full">
@@ -217,7 +217,7 @@ export default function DashboardPage() {
       {perFormStats.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Submissions per Form</CardTitle>
+            <CardTitle className="text-base">各表单提交统计</CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
             <ChartContainer config={barChartConfig} className="h-[200px] w-full">
@@ -250,17 +250,17 @@ export default function DashboardPage() {
       {perFormStats.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Form Breakdown</CardTitle>
+            <CardTitle className="text-base">表单明细</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Form</th>
-                    <th className="text-right py-2 px-4 font-medium text-muted-foreground">Total</th>
-                    <th className="text-right py-2 px-4 font-medium text-muted-foreground">This Week</th>
-                    <th className="text-right py-2 pl-4 font-medium text-muted-foreground">This Month</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">表单</th>
+                    <th className="text-right py-2 px-4 font-medium text-muted-foreground">总计</th>
+                    <th className="text-right py-2 px-4 font-medium text-muted-foreground">本周</th>
+                    <th className="text-right py-2 pl-4 font-medium text-muted-foreground">本月</th>
                   </tr>
                 </thead>
                 <tbody>

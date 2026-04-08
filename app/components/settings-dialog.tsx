@@ -20,31 +20,31 @@ const SMTP_CONFIGS: Record<string, { host: string; port: number; secure: boolean
     host: "smtp.gmail.com",
     port: 587,
     secure: true,
-    hint: "For Gmail, use an App Password instead of your regular password. Go to Google Account → Security → 2-Step Verification → App passwords."
+    hint: "Gmail 请使用应用专用密码。前往 Google 账户 → 安全性 → 两步验证 → 应用专用密码。"
   },
   "outlook.com": {
     host: "smtp-mail.outlook.com",
     port: 587,
     secure: true,
-    hint: "For Outlook, use your regular Microsoft account password or an App Password if you have 2FA enabled."
+    hint: "Outlook 请使用 Microsoft 账户密码，如已开启两步验证请使用应用专用密码。"
   },
   "hotmail.com": {
     host: "smtp-mail.outlook.com",
     port: 587,
     secure: true,
-    hint: "For Hotmail, use your regular Microsoft account password or an App Password if you have 2FA enabled."
+    hint: "Hotmail 请使用 Microsoft 账户密码，如已开启两步验证请使用应用专用密码。"
   },
   "yahoo.com": {
     host: "smtp.mail.yahoo.com",
     port: 587,
     secure: true,
-    hint: "For Yahoo, generate an App Password at: Account Info → Account Security → Generate app password."
+    hint: "Yahoo 请生成应用专用密码：账户信息 → 账户安全 → 生成应用密码。"
   },
   "icloud.com": {
     host: "smtp.mail.me.com",
     port: 587,
     secure: true,
-    hint: "For iCloud, use an App-Specific Password. Go to appleid.apple.com → Sign-In and Security → App-Specific Passwords."
+    hint: "iCloud 请使用 App 专用密码。前往 appleid.apple.com → 登录和安全 → App 专用密码。"
   },
 }
 
@@ -179,14 +179,14 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] h-[90vh] max-w-[90vw] sm:max-w-[90vw] max-h-[90vh] overflow-y-auto p-6 flex flex-col items-start">
         <DialogHeader className="mb-6 w-full">
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>设置</DialogTitle>
         </DialogHeader>
 
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
+            <CardTitle>邮件通知</CardTitle>
             <CardDescription>
-              Configure email notifications for all form submissions
+              配置所有表单提交的邮件通知
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -195,7 +195,7 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    Your Email
+                    您的邮箱
                   </Label>
                   <Input
                     id="email"
@@ -207,7 +207,7 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                     required
                   />
                   <p className="text-sm text-muted-foreground">
-                    This email will be used to send and receive notifications
+                    此邮箱将用于发送和接收通知
                   </p>
                 </div>
 
@@ -216,19 +216,19 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                     <div className="space-y-2">
                       <Label htmlFor="password" className="flex items-center gap-2">
                         <Lock className="h-4 w-4" />
-                        SMTP Password
+                        SMTP 密码
                       </Label>
                       <Input
                         id="password"
                         name="notification_email_password"
                         type="password"
-                        placeholder="Enter your SMTP password"
+                        placeholder="请输入 SMTP 密码"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                       />
                       <p className="text-sm text-muted-foreground">
-                        {smtpConfig ? smtpConfig.hint : "Use your email password or app-specific password"}
+                        {smtpConfig ? smtpConfig.hint : "使用您的邮箱密码或应用专用密码"}
                       </p>
                     </div>
 
@@ -237,7 +237,7 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                         <div className="space-y-2">
                           <Label htmlFor="smtp-host" className="flex items-center gap-2">
                             <Server className="h-4 w-4" />
-                            SMTP Host
+                            SMTP 主机
                           </Label>
                           <Input
                             id="smtp-host"
@@ -249,12 +249,12 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                             required
                           />
                           <p className="text-sm text-muted-foreground">
-                            The SMTP server address for your email provider
+                            您邮箱服务商的 SMTP 服务器地址
                           </p>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="smtp-port">SMTP Port</Label>
+                          <Label htmlFor="smtp-port">SMTP 端口</Label>
                           <Input
                             id="smtp-port"
                             name="smtp_port"
@@ -265,7 +265,7 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                             required
                           />
                           <p className="text-sm text-muted-foreground">
-                            Common ports: 587 (TLS), 465 (SSL), 25 (Plain)
+                            常用端口：587 (TLS)、465 (SSL)、25 (明文)
                           </p>
                         </div>
                       </div>
@@ -292,13 +292,13 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                               variant="outline"
                               isSubmitting={isTesting}
                               isSuccess={testSuccess}
-                              loadingText="Sending..."
-                              successText="Test email sent!"
+                              loadingText="发送中..."
+                              successText="测试邮件已发送！"
                               disabled={!email || !password || !smtpHost || !smtpPort}
                               onClick={handleTestEmail}
                               className="w-full sm:w-auto"
                             >
-                              Send test email
+                              发送测试邮件
                             </ResultButton>
                             <Tooltip open={!testPassed ? undefined : false}>
                               <TooltipTrigger asChild>
@@ -307,17 +307,17 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                                     type="submit"
                                     isSubmitting={isSaving}
                                     isSuccess={isSaved}
-                                    loadingText="Saving..."
-                                    successText="Saved!"
+                                    loadingText="保存中..."
+                                    successText="已保存！"
                                     disabled={!testPassed}
                                     className="w-full sm:w-auto"
                                   >
-                                    Save Settings
+                                    保存设置
                                   </ResultButton>
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Send a test email first to verify your settings</p>
+                                <p>请先发送测试邮件验证设置</p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
@@ -327,12 +327,12 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                               variant="outline"
                               isSubmitting={isClearing}
                               isSuccess={isCleared}
-                              loadingText="Disabling..."
-                              successText="Disabled!"
+                              loadingText="禁用中..."
+                              successText="已禁用！"
                               className="w-full sm:w-auto text-destructive hover:text-destructive"
                               onClick={handleDisableNotifications}
                             >
-                              Disable Notifications
+                              禁用通知
                             </ResultButton>
                           )}
                         </div>

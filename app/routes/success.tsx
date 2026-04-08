@@ -5,7 +5,7 @@ import type { Route } from "./+types/success";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Submission Successful" },
-    { name: "description", content: "Your form has been submitted successfully." },
+    { name: "description", content: "Your form has been submitted successfully" },
   ];
 }
 
@@ -63,7 +63,7 @@ export default function Success() {
             Submission Successful!
           </h1>
           <p className="text-muted-foreground">
-            Thank you for your submission. We've received your information and will get back to you soon.
+            Thank you for your submission. We have received your information and will get back to you shortly.
           </p>
           {redirectUrl && (
             <p className="mt-4 text-sm text-muted-foreground">
@@ -76,7 +76,7 @@ export default function Success() {
                 href={redirectUrl}
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Continue Now
+                Redirect Now
               </a>
             )}
             <button

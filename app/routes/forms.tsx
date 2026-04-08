@@ -13,10 +13,12 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 
   const user = await requireAuth(request, database)
 
-  // Fetch all forms with submission counts
+  // Fetch all forms with submission counts and unread counts
   const result = await database
     .prepare(
-      `SELECT f.id, f.name, COUNT(s.id) as submission_count
+      `SELECT f.id, f.name,
+              COUNT(s.id) as submission_count,
+              SUM(CASE WHEN s.is_read = 0 AND s.is_archived = 0 THEN 1 ELSE 0 END) as unread_count
        FROM forms f
        LEFT JOIN submissions s ON f.id = s.form_id
        GROUP BY f.id, f.name
@@ -24,7 +26,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
     )
     .all()
 
-  const forms = result.results as (Form & { submission_count: number })[]
+  const forms = result.results as (Form & { submission_count: number; unread_count: number })[]
 
   // If no forms exist, redirect to create first form
   if (forms.length === 0) {
@@ -53,7 +55,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     const formId = formData.get("formId") as string
     const newName = formData.get("name") as string
     if (!formId || !newName) {
-      return { error: "Form ID and new name are required" }
+      return { error: "表单 ID 和新名称为必填项" }
     }
     await database
       .prepare("UPDATE forms SET name = ?, updated_at = ? WHERE id = ?")
@@ -65,7 +67,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "delete") {
     const formId = formData.get("formId") as string
     if (!formId) {
-      return { error: "Form ID is required" }
+      return { error: "表单 ID 为必填项" }
     }
     // Delete all submissions for this form first
     await database
@@ -82,7 +84,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       .prepare("SELECT id FROM forms ORDER BY created_at ASC LIMIT 1")
       .first()
     if (remaining) {
-      return redirect(`/forms/${remaining.id}/submissions`)
+      return redirect("/forms/dashboard")
     }
     return redirect("/setup")
   }
@@ -91,7 +93,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const name = formData.get("name") as string
 
   if (!name) {
-    return { error: "Form name is required" }
+    return { error: "表单名称为必填项" }
   }
 
   // Generate a slug from the form name
@@ -107,7 +109,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     .first()
 
   if (existing) {
-    return { error: "A form with this name already exists" }
+    return { error: "已存在同名表单" }
   }
 
   const createdAt = Date.now()

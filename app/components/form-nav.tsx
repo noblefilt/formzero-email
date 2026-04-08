@@ -1,27 +1,33 @@
-import { Database, Puzzle, LayoutDashboard } from "lucide-react"
+import { Database, Puzzle, LayoutDashboard, FileText } from "lucide-react"
 import { NavLink, useParams } from "react-router"
+import type { Form } from "#/types/form"
 
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "#/components/ui/sidebar"
 
-export function FormNav() {
+type FormNavProps = {
+  forms: (Form & { submission_count?: number; unread_count?: number })[]
+}
+
+export function FormNav({ forms }: FormNavProps) {
   const params = useParams()
   const formId = params.formId
 
   const formItems = formId ? [
     {
-      title: "Submissions",
+      title: "提交数据",
       url: `/forms/${formId}/submissions`,
       icon: Database,
     },
     {
-      title: "Integration",
+      title: "集成",
       url: `/forms/${formId}/integration`,
       icon: Puzzle,
     },
@@ -36,16 +42,38 @@ export function FormNav() {
               <SidebarMenuButton asChild>
                 <NavLink to="/forms/dashboard">
                   <LayoutDashboard />
-                  <span>Dashboard</span>
+                  <span>仪表盘</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
+      <SidebarGroup>
+        <SidebarGroupLabel>表单列表</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {forms.map((form) => (
+              <SidebarMenuItem key={form.id}>
+                <SidebarMenuButton asChild isActive={formId === form.id}>
+                  <NavLink to={`/forms/${form.id}/submissions`}>
+                    <FileText />
+                    <span>{form.name}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+                {form.unread_count ? (
+                  <SidebarMenuBadge className="bg-blue-500 text-white">{form.unread_count}</SidebarMenuBadge>
+                ) : form.submission_count !== undefined ? (
+                  <SidebarMenuBadge>{form.submission_count}</SidebarMenuBadge>
+                ) : null}
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
       {formItems.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel>Current Form</SidebarGroupLabel>
+          <SidebarGroupLabel>当前表单</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {formItems.map((item) => (

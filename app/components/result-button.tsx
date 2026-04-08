@@ -15,8 +15,8 @@ type ResultButtonProps = {
 export function ResultButton({
   isSubmitting,
   isSuccess,
-  loadingText = "Loading...",
-  successText = "Success!",
+  loadingText = "加载中...",
+  successText = "成功！",
   children,
   className,
   ...props
