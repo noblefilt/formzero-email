@@ -7,7 +7,6 @@ export default [
 
   index("routes/home.tsx"),
   route("setup", "routes/setup.tsx"),
-  route("editor", "routes/editor.tsx"),
   route("/forms", "routes/forms.tsx", [
     route("dashboard", "routes/forms.dashboard.tsx"),
     route(":formId", "routes/forms.$formId.tsx", [
