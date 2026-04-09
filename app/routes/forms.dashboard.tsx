@@ -1,9 +1,10 @@
-import { useLoaderData, Link } from "react-router"
+import * as React from "react"
+import { useFetcher, useLoaderData, Link } from "react-router"
 import type { Route } from "./+types/forms.dashboard"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, Bar, BarChart } from "recharts"
-import { TrendingUp, TrendingDown, FileText } from "lucide-react"
+import { TrendingUp, TrendingDown, FileText, Plus } from "lucide-react"
 import type { ChartConfig } from "~/components/ui/chart"
 import { requireAuth } from "~/lib/require-auth.server"
 import {
@@ -14,6 +15,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
+import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { SidebarTrigger } from "~/components/ui/sidebar"
 
@@ -114,31 +126,67 @@ const barChartConfig = {
 
 export default function DashboardPage() {
   const { stats, chartData, perFormStats } = useLoaderData<typeof loader>()
+  const fetcher = useFetcher<{ error?: string }>()
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
 
   return (
     <>
-    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-      <div className="flex items-center gap-2 px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
-        />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/">
-                FormZero
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="hidden md:block" />
-            <BreadcrumbItem>
-              <BreadcrumbPage>仪表盘</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-    </header>
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <div className="flex flex-1 items-center justify-between gap-2 px-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/">FormZero</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>仪表盘</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+
+          <Button type="button" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus />
+            新建表单
+          </Button>
+        </div>
+      </header>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新建表单</DialogTitle>
+            <DialogDescription>创建新表单开始收集提交数据。</DialogDescription>
+          </DialogHeader>
+          <fetcher.Form method="post" action="/forms">
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">表单名称</Label>
+                <Input id="name" name="name" placeholder="联系表单" required />
+                {fetcher.data && "error" in fetcher.data && (
+                  <p className="text-sm text-destructive">{fetcher.data.error as string}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                取消
+              </Button>
+              <Button type="submit" disabled={fetcher.state === "submitting"}>
+                {fetcher.state === "submitting" ? "创建中..." : "创建表单"}
+              </Button>
+            </DialogFooter>
+          </fetcher.Form>
+        </DialogContent>
+      </Dialog>
+
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">
       <div>
         <h2 className="text-lg font-semibold">仪表盘</h2>

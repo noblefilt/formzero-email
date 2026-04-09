@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import type { Form } from "#/types/form"
 import type { User } from "#/types/user"
-import { FormSwitcher } from "#/components/form-switcher"
 import { FormNav } from "#/components/form-nav"
 import { LogOut, MoreHorizontal, Settings } from "lucide-react"
 import { useFetcher } from "react-router"
@@ -9,7 +8,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -57,9 +55,6 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <FormSwitcher forms={forms} />
-      </SidebarHeader>
       <SidebarContent>
         <FormNav forms={forms} />
       </SidebarContent>
