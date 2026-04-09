@@ -1,5 +1,5 @@
-import { Database, Puzzle, LayoutDashboard, FileText } from "lucide-react"
-import { NavLink, useParams } from "react-router"
+import { Database, Puzzle, LayoutDashboard, FileText, Mail } from "lucide-react"
+import { NavLink, useLocation, useParams } from "react-router"
 import type { Form } from "#/types/form"
 
 import {
@@ -18,6 +18,7 @@ type FormNavProps = {
 
 export function FormNav({ forms }: FormNavProps) {
   const params = useParams()
+  const location = useLocation()
   const formId = params.formId
 
   const formItems = formId ? [
@@ -39,10 +40,18 @@ export function FormNav({ forms }: FormNavProps) {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild isActive={location.pathname === "/forms/dashboard"}>
                 <NavLink to="/forms/dashboard">
                   <LayoutDashboard />
                   <span>仪表盘</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location.pathname.startsWith("/editor")}>
+                <NavLink to="/editor">
+                  <Mail />
+                  <span>邮件编辑器</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

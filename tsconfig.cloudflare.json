@@ -4,6 +4,7 @@
     ".react-router/types/**/*",
     "app/**/*",
     "components/**/*",
+    "src/**/*",
     "app/lib/**/*",
     "app/hooks/**/*",
     "app/types/**/*",

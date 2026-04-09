@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import type { Form } from "#/types/form"
 import type { User } from "#/types/user"
 import { FormNav } from "#/components/form-nav"
-import { LogOut, MoreHorizontal, Settings } from "lucide-react"
+import { LogOut, Settings } from "lucide-react"
 import { useFetcher } from "react-router"
 import {
   Sidebar,
@@ -13,12 +13,6 @@ import {
   SidebarMenuButton,
   SidebarRail,
 } from "#/components/ui/sidebar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu"
 import { SettingsDialog } from "#/components/settings-dialog"
 import type { Settings as SettingsType } from "#/types/settings"
 
@@ -28,7 +22,6 @@ type AppSidebarProps = {
 } & React.ComponentProps<typeof Sidebar>
 
 export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
-  const userInitial = user.name.charAt(0).toUpperCase()
   const fetcher = useFetcher()
   const settingsFetcher = useFetcher()
 
@@ -61,35 +54,34 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold">
-                    {userInitial}
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                  </div>
-                  <MoreHorizontal className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                  <Settings />
-                  设置
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut />
-                  退出登录
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="设置"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings />
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">设置</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {user.name}
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="退出登录"
+              onClick={handleLogout}
+            >
+              <LogOut />
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">退出登录</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {user.email}
+                </span>
+              </div>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
