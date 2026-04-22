@@ -36,7 +36,7 @@ import {
 import { deliverWebhook } from "~/lib/webhooks"
 
 type CopyState = "idle" | "success" | "error"
-type CodeSnippetId = "html" | "javascript" | "react"
+type CodeSnippetId = "html" | "javascript" | "react" | "server"
 
 type AllowedOriginsActionData = {
   success?: boolean
@@ -682,10 +682,13 @@ export default function IntegrationPage() {
   const jsExample = `const endpoint = '${formEndpoint}'
 const idempotencyKey = crypto.randomUUID()
 
+// Browser requests do not need a server token.
+// If this site's domain/origin is allowed, FormZero will continue to accept it.
 const payload = {
   name: 'Jane Doe',
   email: 'jane@example.com',
   message: 'I would like a quote for a custom email template.',
+  _gotcha: '',
 }
 
 fetch(endpoint, {
@@ -739,13 +742,20 @@ export function ContactForm() {
     setError('')
 
     try {
+      const idempotencyKey = crypto.randomUUID()
+      const payload = {
+        ...formData,
+        _gotcha: '',
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
       const result = await response.json()
 
@@ -793,6 +803,39 @@ export function ContactForm() {
   )
 }`
 
+  const serverExample = `const endpoint = '${formEndpoint}'
+const serverToken = process.env.FORMZERO_SERVER_TOKEN
+const idempotencyKey = \`erp-order-\${orderId}\`
+
+const headers = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'Idempotency-Key': idempotencyKey,
+}
+
+// Optional: only send this header if you enabled Server Token for direct server-to-server traffic.
+if (serverToken) {
+  headers.Authorization = \`Bearer \${serverToken}\`
+}
+
+const response = await fetch(endpoint, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({
+    email: 'ops@example.com',
+    message: 'Direct server submission',
+    externalOrderId: orderId,
+  }),
+})
+
+const result = await response.json()
+
+if (!response.ok || !result.success) {
+  throw new Error(result.error || 'Submission failed')
+}
+
+console.log(result.duplicate ? 'Existing submission reused:' : 'Submission stored:', result.id)`
+
   return (
     <div className="flex flex-1 flex-col gap-3">
       <Card>
@@ -838,8 +881,9 @@ export function ContactForm() {
         <CardHeader>
           <CardTitle>Integration Examples</CardTitle>
           <CardDescription>
-            Pick the stack you ship with and keep visible copy aligned with the
-            language used on your live site.
+            Pick the stack you ship with. The browser examples already include
+            the default spam and duplicate-submission guards; the server example
+            shows the optional direct-call token flow.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -855,7 +899,9 @@ export function ContactForm() {
               <code className="rounded bg-background px-1 py-0.5 text-xs">
                 _redirect
               </code>{" "}
-              unchanged when you use them.
+              unchanged when you use them. If your browser page runs on an
+              allowed domain/origin, you do not need a server token to keep
+              receiving submissions and notification emails.
             </p>
           </div>
           <Tabs defaultValue="html" className="w-full">
@@ -863,6 +909,7 @@ export function ContactForm() {
               <TabsTrigger value="html">HTML</TabsTrigger>
               <TabsTrigger value="javascript">JavaScript</TabsTrigger>
               <TabsTrigger value="react">React</TabsTrigger>
+              <TabsTrigger value="server">Server</TabsTrigger>
             </TabsList>
 
             <TabsContent value="html" className="mt-3">
@@ -897,6 +944,19 @@ export function ContactForm() {
                   codeCopyState.target === "react" ? codeCopyState.state : "idle"
                 }
                 onCopy={() => handleCopyCode("react", reactExample)}
+              />
+            </TabsContent>
+
+            <TabsContent value="server" className="mt-3">
+              <CodeExample
+                code={serverExample}
+                language="javascript"
+                copyState={
+                  codeCopyState.target === "server"
+                    ? codeCopyState.state
+                    : "idle"
+                }
+                onCopy={() => handleCopyCode("server", serverExample)}
               />
             </TabsContent>
           </Tabs>
@@ -1078,7 +1138,7 @@ function AllowedOriginsSettings({ allowedOrigins }: { allowedOrigins: string }) 
               <code className="rounded bg-background px-1 py-0.5 text-xs">
                 https://www.example.com
               </code>
-              。浏览器请求会按此白名单校验；无{" "}
+              。旧表单不需要额外配置 Server Token，只要浏览器请求域名匹配这里的来源规则，就会继续接收提交并发送邮件通知。无{" "}
               <code className="rounded bg-background px-1 py-0.5 text-xs">
                 Origin
               </code>{" "}
@@ -1178,14 +1238,20 @@ function ServerTokenSettings({
     setHasActiveToken(false)
   }, [revokeFetcher.state, revokeFetcher.data])
 
-  const serverExample = `const response = await fetch('${formEndpoint}', {
+  const serverExample = `const serverToken = process.env.FORMZERO_SERVER_TOKEN
+const headers = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'Idempotency-Key': 'erp-order-2026-0001',
+}
+
+if (serverToken) {
+  headers.Authorization = \`Bearer \${serverToken}\`
+}
+
+const response = await fetch('${formEndpoint}', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': 'Bearer fz_srv_your_token',
-    'Idempotency-Key': 'erp-order-2026-0001',
-  },
+  headers,
   body: JSON.stringify({
     email: 'ops@example.com',
     message: 'Direct server submission',
@@ -1230,14 +1296,14 @@ const result = await response.json()`
       <CardHeader>
         <CardTitle>Server Token</CardTitle>
         <CardDescription>
-          把浏览器 allowlist 和服务端直连权限分层，不要把服务端 token 暴露给前端。
+          可选的高级能力，用来区分浏览器 allowlist 和服务端直连权限；旧表单的浏览器接入不需要改这里。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-md border bg-muted/40 p-3 text-sm">
           <p className="font-medium">生效规则</p>
           <p className="mt-1 text-muted-foreground">
-            浏览器请求继续按来源白名单校验；无{" "}
+            浏览器请求继续按来源白名单校验，只要域名匹配就能继续正常提交并触发邮件通知；无{" "}
             <code className="rounded bg-background px-1 py-0.5 text-xs">
               Origin
             </code>{" "}
@@ -1260,7 +1326,7 @@ const result = await response.json()`
           <p className="mt-1 text-muted-foreground">
             {hasActiveToken
               ? "如果 token 丢失，只能重新生成。重新生成后旧 token 会立即失效。"
-              : "启用后，所有无 Origin 的直连请求都需要携带有效 token。"}
+              : "不启用也不会影响已有浏览器表单；只有你要做无 Origin 的服务端直连时，才需要打开它。"}
           </p>
         </div>
 
@@ -1352,6 +1418,7 @@ function WebhookSettings({
   const [webhookUrlInput, setWebhookUrlInput] = useState(webhookUrl)
   const [webhookSecretInput, setWebhookSecretInput] = useState("")
   const [hasStoredSecret, setHasStoredSecret] = useState(hasWebhookSecret)
+  const [receiverCopyState, setReceiverCopyState] = useState<CopyState>("idle")
 
   useEffect(() => {
     setWebhookUrlInput(webhookUrl)
@@ -1382,6 +1449,67 @@ function WebhookSettings({
     webhookUrlError || missingUrlError || missingSecretError || null
   const isSaving = saveFetcher.state === "submitting"
   const isSaved = saveFetcher.state === "idle" && Boolean(saveFetcher.data?.success)
+  const webhookReceiverExample = `const encoder = new TextEncoder()
+
+function toHex(buffer) {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function signFormZeroPayload(secret, timestamp, rawBody) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(\`\${timestamp}.\${rawBody}\`),
+  )
+
+  return \`sha256=\${toHex(signature)}\`
+}
+
+export async function handleFormZeroWebhook(request) {
+  const rawBody = await request.text()
+  const timestamp = request.headers.get('x-formzero-timestamp') || ''
+  const incomingSignature = request.headers.get('x-formzero-signature') || ''
+
+  const expectedSignature = await signFormZeroPayload(
+    process.env.FORMZERO_WEBHOOK_SECRET,
+    timestamp,
+    rawBody,
+  )
+
+  if (!timestamp || incomingSignature !== expectedSignature) {
+    return new Response('invalid signature', { status: 401 })
+  }
+
+  const event = JSON.parse(rawBody)
+
+  if (event.event === 'submission.created') {
+    console.log('submission id:', event.submission.id)
+    console.log('idempotency key:', event.submission.idempotencyKey)
+  }
+
+  return new Response('ok')
+}`
+
+  const handleCopyReceiverExample = async () => {
+    try {
+      await navigator.clipboard.writeText(webhookReceiverExample)
+      setReceiverCopyState("success")
+    } catch {
+      setReceiverCopyState("error")
+    }
+
+    setTimeout(() => setReceiverCopyState("idle"), 2000)
+  }
 
   return (
     <Card>
@@ -1462,6 +1590,21 @@ function WebhookSettings({
           >
             保存 Webhook 配置
           </ResultButton>
+
+          <div className="space-y-2 border-t pt-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Webhook 接收示例</p>
+              <p className="text-sm text-muted-foreground">
+                下面的示例已经包含签名校验逻辑，复制后只需要换成你的环境变量名和业务处理代码。
+              </p>
+            </div>
+            <CodeExample
+              code={webhookReceiverExample}
+              language="javascript"
+              copyState={receiverCopyState}
+              onCopy={handleCopyReceiverExample}
+            />
+          </div>
         </saveFetcher.Form>
       </CardContent>
     </Card>

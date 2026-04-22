@@ -19,6 +19,9 @@ Each form can optionally define an **allowed origins** list.
 - Only the origin is stored. Paths and query strings are ignored.
 - Browser requests with an `Origin` header are checked against this list.
 - Direct server requests without an `Origin` header are not blocked by this list.
+- Existing browser-based forms do not need a server token. If the page domain
+  matches the allowlist, submissions continue to be accepted and email
+  notifications continue to fire.
 
 When an allowlist exists:
 
@@ -53,6 +56,7 @@ HTML form posts cannot attach custom headers, so they cannot use this feature.
 Each form can optionally issue a **Server Token** for direct server-side
 submissions.
 
+- This is optional and intended for direct server-to-server traffic.
 - the raw token is shown only once when generated or regenerated
 - only the token hash is stored in the database
 - browser-origin requests continue to be authorized by the allowlist
@@ -67,6 +71,16 @@ If a token is enabled and a direct request omits it or sends the wrong token:
 
 This separation is intentional: browser integrations should stay origin-based,
 while server integrations can be granted explicit token-based access.
+
+## Example coverage
+
+The integration page examples should be copy-ready:
+
+- HTML includes `_gotcha` and `_redirect`
+- browser JavaScript and React include `Idempotency-Key`
+- browser examples must not require a server token
+- a direct server example must show the token as optional and conditional
+- a webhook receiver example must show signature verification
 
 ## Signed webhooks
 
@@ -132,6 +146,7 @@ The integration screen must:
 
 - explain when to translate visible copy for the live site language
 - expose copy affordances for the endpoint, code snippets, and server token
+- keep the primary examples backward-compatible for existing browser forms
 - validate allowlist entries while the user types
 - keep webhook URL / secret validation explicit before save
 - show whether a server token is currently active

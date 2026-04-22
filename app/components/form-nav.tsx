@@ -1,4 +1,4 @@
-import { Database, Puzzle, LayoutDashboard, FileText } from "lucide-react"
+import { LayoutDashboard, FileText } from "lucide-react"
 import { NavLink, useLocation, useParams } from "react-router"
 import type { Form } from "#/types/form"
 
@@ -20,19 +20,6 @@ export function FormNav({ forms }: FormNavProps) {
   const params = useParams()
   const location = useLocation()
   const formId = params.formId
-
-  const formItems = formId ? [
-    {
-      title: "提交数据",
-      url: `/forms/${formId}/submissions`,
-      icon: Database,
-    },
-    {
-      title: "集成",
-      url: `/forms/${formId}/integration`,
-      icon: Puzzle,
-    },
-  ] : []
 
   return (
     <>
@@ -72,25 +59,6 @@ export function FormNav({ forms }: FormNavProps) {
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
-      {formItems.length > 0 && (
-        <SidebarGroup>
-          <SidebarGroupLabel>当前表单</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {formItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
     </>
   )
 }

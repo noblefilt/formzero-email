@@ -1,7 +1,15 @@
 import type { Route } from "./+types/forms.$formId"
 import * as React from "react"
-import { Plus } from "lucide-react"
-import { Outlet, redirect, useFetcher, useLoaderData, useLocation, useParams } from "react-router";
+import { Database, Plus, Puzzle } from "lucide-react"
+import {
+  Link,
+  Outlet,
+  redirect,
+  useFetcher,
+  useLoaderData,
+  useLocation,
+  useParams,
+} from "react-router";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -75,6 +83,18 @@ export default function FormLayout() {
     dashboard: "仪表盘",
   }
   const pageTitle = pageTitleMap[currentPage] || (currentPage.charAt(0).toUpperCase() + currentPage.slice(1))
+  const currentFormActions = [
+    {
+      title: "提交数据",
+      url: `/forms/${params.formId}/submissions`,
+      icon: Database,
+    },
+    {
+      title: "集成",
+      url: `/forms/${params.formId}/integration`,
+      icon: Puzzle,
+    },
+  ]
 
   return (
     <>
@@ -105,10 +125,26 @@ export default function FormLayout() {
             </Breadcrumb>
           </div>
 
-          <Button type="button" onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus />
-            新建表单
-          </Button>
+          <div className="flex items-center gap-2">
+            {currentFormActions.map((action) => (
+              <Button
+                key={action.title}
+                type="button"
+                variant={location.pathname === action.url ? "secondary" : "outline"}
+                size="sm"
+                asChild
+              >
+                <Link to={action.url}>
+                  <action.icon />
+                  {action.title}
+                </Link>
+              </Button>
+            ))}
+            <Button type="button" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus />
+              新建表单
+            </Button>
+          </div>
         </div>
       </header>
 
