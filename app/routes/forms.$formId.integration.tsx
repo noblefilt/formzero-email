@@ -1025,10 +1025,24 @@ if (result.duplicate) {
 function AllowedOriginsSettings({ allowedOrigins }: { allowedOrigins: string }) {
   const saveFetcher = useFetcher<AllowedOriginsActionData>()
   const [allowedOriginsInput, setAllowedOriginsInput] = useState(allowedOrigins)
+  const [defaultOrigin, setDefaultOrigin] = useState("")
 
   useEffect(() => {
-    setAllowedOriginsInput(allowedOrigins)
-  }, [allowedOrigins])
+    if (typeof window === "undefined") {
+      return
+    }
+
+    setDefaultOrigin(window.location.origin)
+  }, [])
+
+  useEffect(() => {
+    if (allowedOrigins.trim()) {
+      setAllowedOriginsInput(allowedOrigins)
+      return
+    }
+
+    setAllowedOriginsInput(defaultOrigin)
+  }, [allowedOrigins, defaultOrigin])
 
   useEffect(() => {
     if (saveFetcher.state !== "idle" || !saveFetcher.data?.success) {
@@ -1050,7 +1064,7 @@ function AllowedOriginsSettings({ allowedOrigins }: { allowedOrigins: string }) 
       <CardHeader>
         <CardTitle>允许来源</CardTitle>
         <CardDescription>
-          为浏览器提交添加站点白名单。留空时允许任意网站提交。
+          为浏览器提交添加站点白名单。默认会预填当前站点 domain，清空后才会允许任意网站提交。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -1060,7 +1074,7 @@ function AllowedOriginsSettings({ allowedOrigins }: { allowedOrigins: string }) 
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
             <p className="font-medium">生产环境建议</p>
             <p className="mt-1 text-muted-foreground">
-              为每个可信网站填写一个 origin，例如{" "}
+              默认会先带入当前站点的 origin。你也可以替换为正式站点域名，并为每个可信网站填写一个 origin，例如{" "}
               <code className="rounded bg-background px-1 py-0.5 text-xs">
                 https://www.example.com
               </code>
@@ -1094,7 +1108,7 @@ function AllowedOriginsSettings({ allowedOrigins }: { allowedOrigins: string }) 
                 ? `以下条目无效：${parsedAllowedOrigins.invalidEntries.join("、")}`
                 : parsedAllowedOrigins.origins.length > 0
                   ? `将允许 ${parsedAllowedOrigins.origins.length} 个来源。保存后会自动标准化为纯 origin，路径与查询参数会被忽略。`
-                  : "未设置白名单时，任何网站都可以发起浏览器提交。"}
+                  : "当前已切换为允许所有来源，任何网站都可以发起浏览器提交。"}
             </p>
           </div>
 

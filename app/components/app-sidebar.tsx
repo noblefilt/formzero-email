@@ -46,41 +46,35 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
     fetcher.submit(null, { method: "post", action: "/logout" })
   }
 
+  void user
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarContent>
         <FormNav forms={forms} />
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
+        <SidebarMenu className="grid grid-cols-2 gap-2 group-data-[collapsible=icon]:grid-cols-1">
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="lg"
+              size="default"
               tooltip="设置"
               onClick={() => setSettingsOpen(true)}
+              className="justify-center"
             >
               <Settings />
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">设置</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {user.name}
-                </span>
-              </div>
+              <span className="font-medium">设置</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="lg"
+              size="default"
               tooltip="退出登录"
               onClick={handleLogout}
+              className="justify-center"
             >
               <LogOut />
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">退出登录</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {user.name}
-                </span>
-              </div>
+              <span className="font-medium">退出登录</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

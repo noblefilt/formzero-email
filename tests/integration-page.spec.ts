@@ -54,7 +54,7 @@ async function ensureFormReady(page: Page) {
   }
 }
 
-test("integration page shows english examples and account menu only repeats the user name", async ({
+test("integration page shows english examples and a simplified account menu", async ({
   page,
 }) => {
   await ensureAuthenticated(page)
@@ -72,12 +72,13 @@ test("integration page shows english examples and account menu only repeats the 
   await expect(page.getByRole("heading", { name: "Server Token" })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Webhook Signing" })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Webhook Delivery Log" })).toBeVisible()
+  await expect(page.getByText("默认会预填当前站点 domain")).toBeVisible()
 
   const codeBlock = page.locator("pre").first()
   await expect(codeBlock).toContainText("_gotcha")
   await expect(codeBlock).toContainText("_redirect")
   await expect(codeBlock).not.toContainText("反垃圾邮件")
 
-  await expect(page.getByText(authName, { exact: true })).toHaveCount(2)
+  await expect(page.getByText(authName, { exact: true })).toHaveCount(0)
   await expect(page.getByText(authEmail, { exact: true })).toHaveCount(0)
 })
