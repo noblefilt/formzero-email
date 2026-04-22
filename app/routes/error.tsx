@@ -17,9 +17,17 @@ const errorMessages = {
     title: "Too Many Requests",
     description: "You are submitting too frequently. Please try again later.",
   },
+  origin_not_allowed: {
+    title: "Origin Not Allowed",
+    description: "This website is not allowed to submit to the form endpoint.",
+  },
+  invalid_server_token: {
+    title: "Invalid Server Token",
+    description: "This direct submission is missing a valid server token.",
+  },
 } as const;
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "Error - FormZero" },
     { name: "description", content: "An error occurred while processing your request." },

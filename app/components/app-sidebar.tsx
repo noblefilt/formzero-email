@@ -78,7 +78,7 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">退出登录</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {user.email}
+                  {user.name}
                 </span>
               </div>
             </SidebarMenuButton>
