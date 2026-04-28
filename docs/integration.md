@@ -14,12 +14,14 @@ server-side form submissions.
 
 If `_gotcha` is present and non-empty, the submission is still accepted and
 stored, but it is marked as Spam. The operator can also manually mark a normal
-inbox submission as Spam from the submission row menu, bulk actions, or detail
-panel.
+inbox submission as Spam from the one-click row icon after the star action,
+bulk actions, or the detail panel. Spam marking does not require confirmation;
+mistaken clicks can be restored from `/forms/spam`.
 
 Spam submissions:
 
 - appear only in `/forms/spam`
+- can be restored back to the normal inbox from `/forms/spam`
 - are excluded from the normal dashboard and per-form submission inbox
 - do not send notification emails
 - do not emit webhooks

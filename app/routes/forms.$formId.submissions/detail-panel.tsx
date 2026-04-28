@@ -147,7 +147,6 @@ export function DetailPanel({
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!confirm("确定将此提交标为垃圾邮件吗？")) return
               onMarkSpam?.(submission.id)
               onOpenChange(false)
             }}

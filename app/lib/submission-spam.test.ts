@@ -6,6 +6,7 @@ import {
   getSourceDomain,
   getSubmissionEmail,
   getSubmissionMessage,
+  getSubmissionSourceDomain,
   isSpamSubmission,
 } from "./submission-spam"
 
@@ -40,4 +41,22 @@ test("spam preview helpers extract the mailbox, message, and source domain", () 
   assert.equal(getSubmissionMessage(submission), "I need help with my order.")
   assert.equal(getSourceDomain("https://shop.example.com/contact"), "shop.example.com")
   assert.equal(getSourceDomain(null), "直接提交")
+})
+
+test("spam source domain falls back to submitted page URL when Origin is missing", () => {
+  assert.equal(
+    getSubmissionSourceDomain(
+      {
+        "Page Url": "https://www.example.com/contact?utm_source=test",
+        source: "modal",
+      },
+      null
+    ),
+    "www.example.com"
+  )
+
+  assert.equal(
+    getSubmissionSourceDomain({ source: "modal" }, null),
+    "直接提交"
+  )
 })

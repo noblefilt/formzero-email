@@ -159,6 +159,29 @@ export function createColumns(
     },
   }
 
+  const spamColumn: ColumnDef<Submission> = {
+    id: "spam",
+    header: "",
+    cell: ({ row }) => {
+      const submission = row.original
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-muted-foreground/40 hover:text-destructive"
+          aria-label="标为垃圾邮件"
+          title="标为垃圾邮件"
+          onClick={(e) => {
+            e.stopPropagation()
+            options?.onMarkSpam?.(submission.id)
+          }}
+        >
+          <ShieldAlert className="h-4 w-4" />
+        </Button>
+      )
+    },
+  }
+
   // Action column
   const actionColumn: ColumnDef<Submission> = {
     id: "actions",
@@ -186,16 +209,6 @@ export function createColumns(
               )}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => {
-                if (confirm("确定将此提交标为垃圾邮件吗？")) {
-                  options?.onMarkSpam?.(submission.id)
-                }
-              }}
-            >
-              <ShieldAlert className="mr-2 h-4 w-4" />
-              标为垃圾邮件
-            </DropdownMenuItem>
-            <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => {
                 if (confirm("确定要删除此提交数据吗？")) {
@@ -212,5 +225,5 @@ export function createColumns(
     },
   }
 
-  return [starColumn, timeColumn, ...dataColumns, actionColumn]
+  return [starColumn, spamColumn, timeColumn, ...dataColumns, actionColumn]
 }

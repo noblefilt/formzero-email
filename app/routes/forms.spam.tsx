@@ -1,9 +1,11 @@
 import type { Route } from "./+types/forms.spam"
+import { data, useFetcher } from "react-router"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
-import { ShieldAlert } from "lucide-react"
+import { RotateCcw, ShieldAlert } from "lucide-react"
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "#/components/ui/empty"
+import { Button } from "#/components/ui/button"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,9 +23,9 @@ import {
   TableRow,
 } from "#/components/ui/table"
 import {
-  getSourceDomain,
   getSubmissionEmail,
   getSubmissionMessage,
+  getSubmissionSourceDomain,
 } from "#/lib/submission-spam"
 import { requireAuth } from "~/lib/require-auth.server"
 
@@ -54,6 +56,30 @@ function formatExactTime(timestamp: number) {
   })
 }
 
+export async function action({ request, context }: Route.ActionArgs) {
+  const database = context.cloudflare.env.DB
+  await requireAuth(request, database, context.cloudflare.env)
+
+  const formData = await request.formData()
+  const intent = formData.get("intent")
+
+  if (intent === "restore_spam") {
+    const id = formData.get("id")
+    if (typeof id !== "string" || !id) {
+      return data({ error: "缺少提交 ID" }, { status: 400 })
+    }
+
+    await database
+      .prepare("UPDATE submissions SET is_spam = 0 WHERE id = ?")
+      .bind(id)
+      .run()
+
+    return data({ success: true })
+  }
+
+  return data({ error: "未知操作" }, { status: 400 })
+}
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
   await requireAuth(request, database, context.cloudflare.env)
@@ -76,7 +102,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       createdAt: row.created_at,
       email: getSubmissionEmail(parsedData) || "无邮箱",
       message: getSubmissionMessage(parsedData) || "无消息",
-      sourceDomain: getSourceDomain(row.request_origin),
+      sourceDomain: getSubmissionSourceDomain(parsedData, row.request_origin),
     }
   })
 
@@ -85,6 +111,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export default function SpamPage({ loaderData }: Route.ComponentProps) {
   const { submissions } = loaderData
+  const restoreFetcher = useFetcher()
+  const restoringId = restoreFetcher.formData?.get("id")?.toString()
 
   if (submissions.length === 0) {
     return (
@@ -139,11 +167,15 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                 <TableHead>邮箱</TableHead>
                 <TableHead>消息</TableHead>
                 <TableHead>来源</TableHead>
+                <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {submissions.map((submission) => {
                 const createdAt = new Date(submission.createdAt)
+                const isRestoring =
+                  restoreFetcher.state !== "idle" && restoringId === submission.id
+
                 return (
                   <TableRow key={submission.id}>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
@@ -164,6 +196,22 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {submission.sourceDomain}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <restoreFetcher.Form method="post">
+                        <input type="hidden" name="intent" value="restore_spam" />
+                        <input type="hidden" name="id" value={submission.id} />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="sm"
+                          disabled={isRestoring}
+                          className="h-8 gap-1.5"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {isRestoring ? "还原中..." : "还原"}
+                        </Button>
+                      </restoreFetcher.Form>
                     </TableCell>
                   </TableRow>
                 )

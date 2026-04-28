@@ -34,7 +34,7 @@ lead-form messages from multiple websites without running a public CRM.
 - Form integration instructions.
 - Notification settings and test email.
 - Replyable submission notification emails.
-- Normal submissions inbox with read, star, archive, delete, and manual spam actions.
+- Normal submissions inbox with read, star, archive, delete, and one-click manual spam actions.
 - Spam quarantine for honeypot submissions and manually marked spam.
 - Spam list showing time, email, message, and source domain.
 - Route-level resilience for utility URLs and unknown requests.
@@ -67,7 +67,7 @@ lead-form messages from multiple websites without running a public CRM.
 
 - `/forms/dashboard` shows the private submission overview.
 - `/forms/spam` shows quarantined spam submissions with time, email, message,
-  and source domain.
+  source domain, and a restore action.
 - `/forms/:formId/submissions` shows the normal inbox for a form and supports
   read, star, archive, delete, and manual spam marking.
 - `/forms/:formId/integration` keeps form integration setup available.
@@ -95,11 +95,13 @@ Required actions:
 - mark read / unread,
 - star / unstar,
 - archive / unarchive,
-- mark as spam,
+- mark as spam from the row icon immediately after the star icon,
 - delete with confirmation.
 
 Marking a normal submission as spam moves it out of the normal inbox by setting
-`is_spam = 1`.
+`is_spam = 1`. This action does not ask for confirmation; the row should leave
+the active queue immediately, and mistaken clicks are recovered from the Spam
+view.
 
 ## Spam Contract
 
@@ -110,7 +112,8 @@ Spam can enter the quarantine in two ways:
 
 Spam submissions are accepted and stored, but they do not trigger email or
 webhook side effects. The Spam page should stay intentionally small: time,
-email, message, and source domain.
+email, message, source domain, and a one-click restore button that sets
+`is_spam = 0`.
 
 ## Engineering Standard
 

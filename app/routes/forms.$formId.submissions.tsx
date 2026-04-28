@@ -200,18 +200,21 @@ export default function SubmissionsPage() {
   const [detailSubmission, setDetailSubmission] = useState<Submission | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [filter, setFilter] = useState<"all" | "unread" | "starred" | "archived">("all")
+  const [spamHiddenIds, setSpamHiddenIds] = useState<string[]>([])
+
+  const visibleSubmissions = submissions.filter((s) => !spamHiddenIds.includes(s.id))
 
   // Filter submissions based on current filter
-  const filteredSubmissions = submissions.filter((s) => {
+  const filteredSubmissions = visibleSubmissions.filter((s) => {
     if (filter === "unread") return !s.is_read
     if (filter === "starred") return s.is_starred
     if (filter === "archived") return s.is_archived
     return !s.is_archived // "all" hides archived by default
   })
 
-  const unreadCount = submissions.filter((s) => !s.is_read && !s.is_archived).length
-  const starredCount = submissions.filter((s) => s.is_starred).length
-  const archivedCount = submissions.filter((s) => s.is_archived).length
+  const unreadCount = visibleSubmissions.filter((s) => !s.is_read && !s.is_archived).length
+  const starredCount = visibleSubmissions.filter((s) => s.is_starred).length
+  const archivedCount = visibleSubmissions.filter((s) => s.is_archived).length
 
   const handleDeleteIds = useCallback((ids: string[]) => {
     if (ids.length === 0) return
@@ -227,15 +230,18 @@ export default function SubmissionsPage() {
 
   const handleMarkSpamIds = useCallback((ids: string[]) => {
     if (ids.length === 0) return
+    const uniqueIds = Array.from(new Set(ids))
+    setSpamHiddenIds((current) => Array.from(new Set([...current, ...uniqueIds])))
+    setSelectedIds((current) => current.filter((id) => !uniqueIds.includes(id)))
+
     const formData = new FormData()
     formData.append("intent", "mark_spam")
-    ids.forEach((id) => formData.append("ids", id))
+    uniqueIds.forEach((id) => formData.append("ids", id))
     statusFetcher.submit(formData, { method: "post" })
   }, [statusFetcher])
 
   const handleMarkSpamSingle = useCallback((id: string) => {
     handleMarkSpamIds([id])
-    setSelectedIds((current) => current.filter((selectedId) => selectedId !== id))
   }, [handleMarkSpamIds])
 
   const handleViewDetail = useCallback((submission: Submission) => {
@@ -290,13 +296,11 @@ export default function SubmissionsPage() {
 
   const handleMarkSelectedSpam = () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`确定将这 ${selectedIds.length} 条提交标为垃圾邮件吗？`)) return
     handleMarkSpamIds(selectedIds)
-    setSelectedIds([])
   }
 
   const exportToCSV = () => {
-    if (submissions.length === 0) return
+    if (visibleSubmissions.length === 0) return
 
     // Helper to escape CSV values
     const escapeCSV = (value: any) => {
@@ -310,7 +314,7 @@ export default function SubmissionsPage() {
 
     // Get all unique keys from all submissions
     const allKeys = new Set<string>()
-    submissions.forEach(sub => {
+    visibleSubmissions.forEach(sub => {
       getVisibleSubmissionEntries(sub.data).forEach(([key]) => allKeys.add(key))
     })
     const dataKeys = Array.from(allKeys).sort()
@@ -319,7 +323,7 @@ export default function SubmissionsPage() {
     const headers = ['ID', 'Created At', ...dataKeys]
 
     // Create CSV rows
-    const rows = submissions.map(sub => {
+    const rows = visibleSubmissions.map(sub => {
       const date = new Date(sub.created_at).toLocaleString()
       const dataValues = dataKeys.map(key => escapeCSV(sub.data[key]))
       return [escapeCSV(sub.id), escapeCSV(date), ...dataValues].join(',')
@@ -405,7 +409,7 @@ export default function SubmissionsPage() {
       </Card>
 
       {/* Filter tabs */}
-      {submissions.length > 0 && (
+      {visibleSubmissions.length > 0 && (
         <div className="flex items-center gap-1 border-b pb-2">
           <Button
             variant={filter === "all" ? "secondary" : "ghost"}
@@ -457,7 +461,7 @@ export default function SubmissionsPage() {
         </div>
       )}
 
-      {submissions.length === 0 ? (
+      {visibleSubmissions.length === 0 ? (
         <div className="flex flex-1 items-center justify-center min-w-0 py-12">
           <Empty>
             <EmptyHeader>

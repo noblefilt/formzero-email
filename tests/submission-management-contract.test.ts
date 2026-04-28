@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import test from "node:test"
 
-test("submission inbox exposes a manual spam action and hides metadata fields", () => {
+test("submission inbox exposes a one-click spam action and hides metadata fields", () => {
   const route = readFileSync(
     join(process.cwd(), "app", "routes", "forms.$formId.submissions.tsx"),
     "utf8"
@@ -31,7 +31,25 @@ test("submission inbox exposes a manual spam action and hides metadata fields", 
 
   assert.match(route, /intent === "mark_spam"/)
   assert.match(route, /UPDATE submissions SET is_spam = 1/)
+  assert.match(route, /spamHiddenIds/)
+  assert.match(route, /setSpamHiddenIds/)
   assert.match(route, /getVisibleSubmissionEntries/)
   assert.match(detailPanel, /标为垃圾邮件/)
   assert.match(columns, /标为垃圾邮件/)
+  assert.match(columns, /const spamColumn/)
+  assert.match(columns, /return \[starColumn, spamColumn, timeColumn/)
+  assert.doesNotMatch(route, /确定将这 \$\{selectedIds\.length\} 条提交标为垃圾邮件吗/)
+  assert.doesNotMatch(columns, /confirm\("确定将此提交标为垃圾邮件吗？"\)/)
+  assert.doesNotMatch(detailPanel, /confirm\("确定将此提交标为垃圾邮件吗？"\)/)
+})
+
+test("spam page can restore quarantined submissions", () => {
+  const spamRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.spam.tsx"),
+    "utf8"
+  )
+
+  assert.match(spamRoute, /intent === "restore_spam"/)
+  assert.match(spamRoute, /UPDATE submissions SET is_spam = 0/)
+  assert.match(spamRoute, /还原/)
 })
