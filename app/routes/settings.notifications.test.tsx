@@ -6,7 +6,7 @@ import { requireAuth } from "~/lib/require-auth.server"
 export async function action({ context, request }: Route.ActionArgs) {
   const database = context.cloudflare.env.DB
 
-  await requireAuth(request, database)
+  await requireAuth(request, database, context.cloudflare.env)
 
   if (request.method !== "POST") {
     return data(

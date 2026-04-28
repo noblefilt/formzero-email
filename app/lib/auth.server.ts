@@ -4,12 +4,17 @@ import { D1Dialect } from 'kysely-d1';
 export function getAuth({
     database,
     baseURL,
+    env,
 }: {
     database: D1Database
     baseURL?: string
+    env?: unknown
 }) {
+    const secret = getAuthSecret(env)
+
     return betterAuth({
         baseURL,
+        ...(secret ? { secret } : {}),
         database: {
            type: "sqlite",
            dialect: new D1Dialect({ database }), 
@@ -18,6 +23,15 @@ export function getAuth({
             enabled: true
         }
     })
+}
+
+function getAuthSecret(env: unknown) {
+    if (!env || typeof env !== "object") {
+        return undefined
+    }
+
+    const value = (env as { BETTER_AUTH_SECRET?: unknown }).BETTER_AUTH_SECRET
+    return typeof value === "string" && value.trim() ? value : undefined
 }
 
 export async function getUserCount({ database }: { database: D1Database }): Promise<number> {

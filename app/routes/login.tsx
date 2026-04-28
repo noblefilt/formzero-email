@@ -4,7 +4,6 @@ import { getAuth, getUserCount } from "#/lib/auth.server";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
-import { authClient } from "#/lib/auth.client";
 
 export const meta: Route.MetaFunction = () => {
   return [
@@ -18,6 +17,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = getAuth({
       database,
       baseURL: new URL(request.url).origin,
+      env: context.cloudflare.env,
   });
 
   // Redirect to app if already logged in
@@ -43,6 +43,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const password = formData.get("password") as string;
 
   try {
+    const { authClient } = await import("#/lib/auth.client");
     const { error: signInError } = await authClient.signIn.email({
       email,
       password,

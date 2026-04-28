@@ -56,7 +56,7 @@ function formatExactTime(timestamp: number) {
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
-  await requireAuth(request, database)
+  await requireAuth(request, database, context.cloudflare.env)
 
   const result = await database
     .prepare(

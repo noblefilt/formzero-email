@@ -1,4 +1,3 @@
-import { createBlock } from "../blocks/registry"
 import type { EmailTemplateRecord } from "../templates/types"
 
 const now = new Date().toISOString()
@@ -16,6 +15,20 @@ export const blankTemplate: EmailTemplateRecord = {
     previewText: "Use this workspace to shape a new campaign.",
     updatedAt: now,
     schemaVersion: 1,
-    blocks: [createBlock("text"), createBlock("button")],
+    blocks: [
+      {
+        id: "draft-blank-template-text",
+        type: "text",
+        content: "Introduce the message with a sharp opening paragraph.",
+        align: "left",
+      },
+      {
+        id: "draft-blank-template-button",
+        type: "button",
+        label: "Launch campaign",
+        href: "https://example.com",
+        align: "left",
+      },
+    ],
   },
 }

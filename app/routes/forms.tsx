@@ -11,7 +11,7 @@ import { requireAuth } from "~/lib/require-auth.server"
 export async function loader({ context, request }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
 
-  const user = await requireAuth(request, database)
+  const user = await requireAuth(request, database, context.cloudflare.env)
 
   // Fetch all forms with submission counts and unread counts
   const result = await database
@@ -50,7 +50,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const database = context.cloudflare.env.DB
 
-  await requireAuth(request, database)
+  await requireAuth(request, database, context.cloudflare.env)
 
   const formData = await request.formData()
   const intent = formData.get("intent") as string

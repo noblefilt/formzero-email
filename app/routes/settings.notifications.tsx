@@ -18,7 +18,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const database = context.cloudflare.env.DB
 
-  await requireAuth(request, database)
+  await requireAuth(request, database, context.cloudflare.env)
 
   // Handle DELETE request - clear settings
   if (request.method === "DELETE") {

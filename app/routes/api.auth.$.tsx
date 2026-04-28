@@ -5,6 +5,7 @@ async function handleAuthRequest(request: Request, context: any) {
     const auth = getAuth({
         database: context.cloudflare.env.DB,
         baseURL: new URL(request.url).origin,
+        env: context.cloudflare.env,
     })
     const url = new URL(request.url)
 

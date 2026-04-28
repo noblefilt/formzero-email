@@ -19,6 +19,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const auth = getAuth({
     database,
     baseURL: new URL(request.url).origin,
+    env: context.cloudflare.env,
   })
   const session = await auth.api.getSession({
     headers: request.headers

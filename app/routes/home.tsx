@@ -7,6 +7,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const auth = getAuth({
       database,
       baseURL: new URL(request.url).origin,
+      env: context.cloudflare.env,
   });
 
   // Redirect to app if already logged in

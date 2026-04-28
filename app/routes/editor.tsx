@@ -18,7 +18,7 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
-  const user = await requireAuth(request, database)
+  const user = await requireAuth(request, database, context.cloudflare.env)
   const bootstrap = await loadEditorBootstrap(database, user.id)
   const formsResult = await database
     .prepare(
@@ -45,7 +45,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const database = context.cloudflare.env.DB
-  const user = await requireAuth(request, database)
+  const user = await requireAuth(request, database, context.cloudflare.env)
 
   try {
     const payload = (await request.json()) as Parameters<typeof mutateEditorStorage>[2]
