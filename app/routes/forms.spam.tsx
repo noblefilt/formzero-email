@@ -74,7 +74,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     return {
       id: row.id,
       createdAt: row.created_at,
-      email: getSubmissionEmail(parsedData) || "No email",
+      email: getSubmissionEmail(parsedData) || "无邮箱",
       message: getSubmissionMessage(parsedData) || "无消息",
       sourceDomain: getSourceDomain(row.request_origin),
     }
@@ -96,7 +96,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
             </EmptyMedia>
             <EmptyTitle>暂无垃圾邮件</EmptyTitle>
             <EmptyDescription>
-              Honeypot 命中的提交会自动进入这里，不会触发邮件通知。
+              诱捕字段命中的提交会自动进入这里，不会触发邮件通知。
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -127,7 +127,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
         <div>
           <h2 className="text-lg font-semibold">垃圾邮件</h2>
           <p className="text-sm text-muted-foreground">
-            自动标记的 Spam 提交，只显示时间、邮箱、消息和来源域名。
+            自动标记的垃圾邮件提交，只显示时间、邮箱、消息和来源域名。
           </p>
         </div>
 
