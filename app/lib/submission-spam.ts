@@ -51,7 +51,7 @@ export function getSubmissionMessage(data: Record<string, unknown>) {
 }
 
 export function getSourceDomain(origin: string | null) {
-  if (!origin) return "Direct submission"
+  if (!origin) return "直接提交"
 
   try {
     return new URL(origin).hostname

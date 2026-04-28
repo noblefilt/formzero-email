@@ -202,7 +202,7 @@ test.describe("UX standards contract @ux-standards", () => {
 
     await subjectInput.fill("")
 
-    await expect(validation).toContainText(/subject/i)
+    await expect(validation).toContainText(/主题|subject/i)
     await expect(action).toBeDisabled()
   })
 

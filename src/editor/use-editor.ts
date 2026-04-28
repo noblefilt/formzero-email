@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
 
 import type { EmailBlock, EmailBlockType } from "../blocks/types"
-import { createBlock } from "../blocks/registry"
+import { createBlock, getBlockDefinition } from "../blocks/registry"
 import { downloadHtml } from "../export/download-html"
 import { renderEmailHtml } from "../export/render-email-html"
 import type {
@@ -31,6 +31,10 @@ type UseEditorOptions = {
 
 function getInitialTemplate(bootstrap: EditorBootstrapData) {
   return bootstrap.templates[0] ?? blankTemplate
+}
+
+function getBlockLabel(type: EmailBlockType) {
+  return getBlockDefinition(type).label
 }
 
 export function useEditor({ initialBootstrap }: UseEditorOptions) {
@@ -85,7 +89,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
         type: "set_autosave",
         state: "error",
         message:
-          "Failed to restore local draft. Starting from the current template.",
+          "无法恢复本地草稿，已从当前模板开始。",
       })
     }
   }, [storageKey, storageReady])
@@ -136,7 +140,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       }
 
       if (!response.ok || !payload.ok || !payload.bootstrap) {
-        throw new Error(payload.error || "Editor persistence request failed.")
+        throw new Error(payload.error || "编辑器保存请求失败。")
       }
 
       setTemplates(payload.bootstrap.templates)
@@ -178,7 +182,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       const message =
         error instanceof Error
           ? error.message
-          : "Editor persistence request failed."
+          : "编辑器保存请求失败。"
 
       dispatch({
         type: "set_feedback",
@@ -208,7 +212,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       dispatch({
         type: "set_autosave",
         state: "saving",
-        message: "Autosaving your draft locally…",
+        message: "正在本地自动保存草稿...",
       })
 
       if (autosaveTimerRef.current) {
@@ -222,14 +226,14 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
           dispatch({
             type: "set_autosave",
             state: "saved",
-            message: "Draft saved locally.",
+            message: "草稿已保存到本地。",
           })
         } catch {
           dispatch({
             type: "set_autosave",
             state: "error",
             message:
-              "Local autosave failed. Keep this tab open or run migrations to enable server persistence.",
+              "本地自动保存失败。请保持此页面打开，或先完成迁移再使用云端存储。",
           })
         }
       }, 300)
@@ -244,7 +248,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_autosave",
       state: "saving",
-      message: "Autosaving your draft…",
+      message: "正在自动保存草稿...",
     })
 
     if (autosaveTimerRef.current) {
@@ -268,7 +272,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
           dispatch({
             type: "set_autosave",
             state: "saved",
-            message: "Draft saved to the server.",
+            message: "草稿已保存到云端。",
           })
         }
       })
@@ -324,10 +328,12 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
   }
 
   function appendBlock(type: EmailBlockType, index?: number) {
+    const label = getBlockLabel(type)
+
     dispatch({
       type: "set_feedback",
       state: "loading",
-      message: `Adding ${type} block…`,
+      message: `正在添加${label}区块...`,
     })
 
     dispatch({
@@ -339,7 +345,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "success",
-      message: `${type} block added.`,
+      message: `${label}区块已添加。`,
     })
   }
 
@@ -352,7 +358,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "success",
-      message: "Block removed. Undo is available.",
+      message: "区块已删除，可撤销。",
     })
   }
 
@@ -361,7 +367,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "success",
-      message: "Undo applied.",
+      message: "已撤销。",
     })
   }
 
@@ -370,7 +376,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "success",
-      message: "Redo applied.",
+      message: "已重做。",
     })
   }
 
@@ -399,7 +405,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "loading",
-      message: "Rendering export HTML…",
+      message: "正在生成导出 HTML...",
     })
 
     const result = renderEmailHtml(state.history.present)
@@ -412,7 +418,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
         state: "error",
         message:
           result.errors[0]?.message ??
-          "Export blocked by validation issues.",
+          "存在校验问题，暂时无法导出。",
       })
       return
     }
@@ -421,7 +427,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_feedback",
       state: "success",
-      message: "HTML exported.",
+      message: "HTML 已导出。",
     })
   }
 
@@ -437,7 +443,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_autosave",
       state: "idle",
-      message: "Autosave canceled for the current cycle.",
+      message: "已取消本轮自动保存。",
     })
   }
 
@@ -445,8 +451,8 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     if (storageReady && lastMutationRef.current) {
       void sendMutation(lastMutationRef.current, {
         activeTemplateId: state.activeTemplate.id,
-        message: "Retrying the last async action…",
-        successMessage: "Retry completed.",
+        message: "正在重试上一次操作...",
+        successMessage: "重试已完成。",
         reloadActiveTemplate: lastMutationRef.current.intent !== "save_template",
       })
       return
@@ -456,19 +462,19 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
     dispatch({
       type: "set_autosave",
       state: "saving",
-      message: "Retrying autosave…",
+      message: "正在重试自动保存...",
     })
   }
 
   function createTemplate(name?: string) {
     if (!storageReady) {
       const id = `local-${crypto.randomUUID()}`
-      const templateName = name?.trim() || "Untitled Draft"
+      const templateName = name?.trim() || "未命名草稿"
       const template: EmailTemplateRecord = {
         ...blankTemplate,
         id,
         name: templateName,
-        summary: "Local-only draft until editor storage is available.",
+        summary: "编辑器云端存储可用前，这是一个本地草稿。",
         updatedAt: new Date().toISOString(),
         document: {
           ...blankTemplate.document,
@@ -490,7 +496,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       dispatch({
         type: "set_feedback",
         state: "success",
-        message: "Local template created. Run migrations to enable version history.",
+        message: "本地模板已创建。完成迁移后可使用版本记录。",
       })
       return
     }
@@ -501,8 +507,8 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
         name,
       },
       {
-        message: "Creating a new template…",
-        successMessage: "New template created.",
+        message: "正在创建新模板...",
+        successMessage: "新模板已创建。",
         reloadActiveTemplate: true,
       }
     )
@@ -513,7 +519,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       dispatch({
         type: "set_feedback",
         state: "error",
-        message: "Version history requires editor storage. Run migrations first.",
+        message: "版本记录需要编辑器云端存储，请先完成迁移。",
       })
       return
     }
@@ -526,8 +532,8 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       },
       {
         activeTemplateId: state.activeTemplate.id,
-        message: "Saving a version snapshot…",
-        successMessage: "Version snapshot saved.",
+        message: "正在保存版本...",
+        successMessage: "版本已保存。",
         reloadActiveTemplate: false,
       }
     )
@@ -538,7 +544,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       dispatch({
         type: "set_feedback",
         state: "error",
-        message: "Version restore requires editor storage. Run migrations first.",
+        message: "恢复版本需要编辑器云端存储，请先完成迁移。",
       })
       return
     }
@@ -551,8 +557,8 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       },
       {
         activeTemplateId: state.activeTemplate.id,
-        message: "Restoring version…",
-        successMessage: "Version restored.",
+        message: "正在恢复版本...",
+        successMessage: "版本已恢复。",
         reloadActiveTemplate: true,
       }
     )
@@ -570,7 +576,7 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
       dispatch({
         type: "set_feedback",
         state: "success",
-        message: "Local template removed.",
+        message: "本地模板已删除。",
       })
       return
     }
@@ -581,8 +587,8 @@ export function useEditor({ initialBootstrap }: UseEditorOptions) {
         templateId,
       },
       {
-        message: "Deleting template…",
-        successMessage: "Template deleted.",
+        message: "正在删除模板...",
+        successMessage: "模板已删除。",
         reloadActiveTemplate: true,
       }
     )

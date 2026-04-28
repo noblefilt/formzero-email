@@ -19,10 +19,10 @@ import {
 } from "../../app/components/ui/breadcrumb"
 import { Separator } from "../../app/components/ui/separator"
 import { SidebarTrigger } from "../../app/components/ui/sidebar"
-import { blockRegistry } from "../blocks/registry"
+import { blockRegistry, getBlockDefinition } from "../blocks/registry"
 import type { EmailBlock, EmailBlockType } from "../blocks/types"
 import { PreviewPane } from "../preview/preview-pane"
-import type { EditorBootstrapData } from "../templates/types"
+import type { EditorBootstrapData, TemplateStatus } from "../templates/types"
 import { Panel, PanelDescription, PanelHeader, PanelTitle } from "../ui/panel"
 import {
   Button,
@@ -36,6 +36,7 @@ import {
 } from "../ui/primitives"
 import { StatusChip } from "../ui/status-chip"
 import { MIN_UNDO_HISTORY_STEPS } from "../ui/ux-standards"
+import type { UxAutosaveState } from "../ui/ux-standards"
 import { blankTemplate } from "./default-document"
 import { useEditor } from "./use-editor"
 
@@ -51,6 +52,21 @@ function formatTimestamp(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value))
+}
+
+function getBlockLabel(type: EmailBlockType) {
+  return getBlockDefinition(type).label
+}
+
+function formatAutosaveState(state: UxAutosaveState) {
+  if (state === "saving") return "保存中"
+  if (state === "saved") return "已保存"
+  if (state === "error") return "保存失败"
+  return "待保存"
+}
+
+function formatTemplateStatus(status: TemplateStatus) {
+  return status === "starter" ? "内置" : "草稿"
 }
 
 function CanvasBlock({
@@ -79,10 +95,10 @@ function CanvasBlock({
       </span>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold capitalize">{block.type}</div>
+          <div className="text-sm font-semibold">{getBlockLabel(block.type)}</div>
           {issues.length > 0 ? (
             <div className="rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
-              {issues.length} issue{issues.length > 1 ? "s" : ""}
+              {issues.length} 个问题
             </div>
           ) : null}
         </div>
@@ -90,8 +106,8 @@ function CanvasBlock({
           {block.type === "text" ? block.content : null}
           {block.type === "image" ? block.caption || block.alt : null}
           {block.type === "button" ? `${block.label} -> ${block.href}` : null}
-          {block.type === "divider" ? `${block.tone} divider` : null}
-          {block.type === "spacer" ? `${block.size}px spacer` : null}
+          {block.type === "divider" ? `${block.tone} 分割线` : null}
+          {block.type === "spacer" ? `${block.size}px 间距` : null}
           {block.type === "html" ? block.html : null}
         </div>
       </div>
@@ -144,7 +160,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
     ]
 
     if (issues.length === 0) {
-      return "All required export checks currently pass."
+      return "导出检查已通过。"
     }
 
     return issues[0]
@@ -183,7 +199,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
               variant="outline"
               data-ux-action="create-template"
               data-ux-feedback={state.feedbackState}
-              onClick={() => createTemplate(`Untitled Draft ${templates.length + 1}`)}
+              onClick={() => createTemplate(`未命名草稿 ${templates.length + 1}`)}
             >
               <MailPlus />
               新建模板
@@ -196,22 +212,21 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
         <section className="grid gap-4 rounded-3xl border bg-card/70 p-6 shadow-sm backdrop-blur lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="space-y-2">
             <div className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Professional Email Editor
+              个人邮件模板
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              Ship durable email templates without a manual save loop.
+              只保留写邮件需要的编辑、预览和导出。
             </h1>
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-              Signed in as {userName}. The workspace now runs real template
-              persistence, autosave, version history, export validation, and
-              retryable async states from one route.
+              当前用户：{userName}。界面显示中文，导出的 HTML、区块 type
+              和存储字段继续保持英文。
             </p>
           </div>
 
           <div className="flex flex-col items-start gap-3 lg:items-end">
             <div className="flex flex-wrap items-center gap-2">
               <StatusChip
-                label={storageReady ? "Persistent storage active" : "Local fallback only"}
+                label={storageReady ? "已连接云端存储" : "仅本地临时模式"}
                 state={storageReady ? "success" : "error"}
               />
               <StatusChip
@@ -220,7 +235,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 data-ux-feedback={state.feedbackState}
               />
               <StatusChip
-                label={`Autosave: ${state.autosaveState}`}
+                label={`自动保存：${formatAutosaveState(state.autosaveState)}`}
                 state={state.autosaveState}
                 data-ux-autosave-status={state.autosaveState}
               />
@@ -234,7 +249,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 disabled={state.history.past.length === 0}
               >
                 <RotateCcw />
-                Undo
+                撤销
               </Button>
               <Button
                 type="button"
@@ -244,7 +259,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 disabled={state.history.future.length === 0}
               >
                 <Redo2 />
-                Redo
+                重做
               </Button>
               <Button
                 type="button"
@@ -253,7 +268,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 data-ux-cancel=""
                 onClick={cancelAutosave}
               >
-                Cancel autosave
+                取消保存
               </Button>
               <Button
                 type="button"
@@ -262,7 +277,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 data-ux-retry=""
                 onClick={retryAutosave}
               >
-                Retry async action
+                重试
               </Button>
               <Button
                 type="button"
@@ -285,14 +300,14 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                 disabled={hasBlockingIssues}
               >
                 <Sparkles />
-                Export HTML
+                导出 HTML
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="destructive"
                 onClick={() => {
-                  if (!window.confirm("Delete the current template and its persisted draft?")) {
+                  if (!window.confirm("确定删除当前模板和已保存草稿吗？")) {
                     return
                   }
 
@@ -308,7 +323,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
               className="sr-only"
               data-ux-history-capacity={String(MIN_UNDO_HISTORY_STEPS)}
             >
-              History supports {MIN_UNDO_HISTORY_STEPS} steps.
+              历史记录支持 {MIN_UNDO_HISTORY_STEPS} 步。
             </span>
           </div>
         </section>
@@ -317,13 +332,12 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
           <Panel className="gap-3 border-dashed border-amber-500/30 bg-amber-500/10">
             <PanelHeader>
               <div>
-                <PanelTitle>Storage status</PanelTitle>
+                <PanelTitle>存储状态</PanelTitle>
                 <PanelDescription>{storageMessage}</PanelDescription>
               </div>
             </PanelHeader>
             <div className="text-sm text-muted-foreground">
-              Autosave still runs. Version history and cross-device persistence stay
-              disabled until the editor tables exist.
+              自动保存仍会运行。编辑器数据表就绪前，版本记录和跨设备同步会暂时关闭。
             </div>
           </Panel>
         ) : null}
@@ -333,9 +347,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Templates</PanelTitle>
+                  <PanelTitle>模板</PanelTitle>
                   <PanelDescription>
-                    Switch between durable drafts and starter structures.
+                    选择一个草稿或内置模板。
                   </PanelDescription>
                 </div>
               </PanelHeader>
@@ -364,11 +378,11 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                           </div>
                         </div>
                         <div className="rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                          {template.status}
+                          {formatTemplateStatus(template.status)}
                         </div>
                       </div>
                       <div className="mt-3 text-xs text-muted-foreground">
-                        Updated {formatTimestamp(template.updatedAt)}
+                        更新于 {formatTimestamp(template.updatedAt)}
                       </div>
                     </button>
                   )
@@ -379,9 +393,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Block Library</PanelTitle>
+                  <PanelTitle>内容区块</PanelTitle>
                   <PanelDescription>
-                    Drag a block into the canvas or click to append.
+                    中文是显示名称，实际区块类型仍是英文。
                   </PanelDescription>
                 </div>
               </PanelHeader>
@@ -412,7 +426,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                         size="sm"
                         onClick={() => appendBlock(definition.type)}
                       >
-                        Add
+                        添加
                       </Button>
                     </div>
                   </div>
@@ -425,29 +439,29 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Document metadata</PanelTitle>
+                  <PanelTitle>邮件信息</PanelTitle>
                   <PanelDescription>
-                    Live validation, autosave, and export all start here.
+                    主题、预览文字会实时校验并参与导出。
                   </PanelDescription>
                 </div>
               </PanelHeader>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-medium">Subject line</span>
+                  <span className="text-sm font-medium">邮件主题</span>
                   <Input
                     value={state.history.present.subject}
                     onChange={(event) => setSubject(event.target.value)}
                     data-ux-autosave-input=""
-                    placeholder="Draft the inbox subject"
+                    placeholder="填写收件箱里看到的主题"
                   />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium">Preview text</span>
+                  <span className="text-sm font-medium">预览文字</span>
                   <Input
                     value={state.history.present.previewText}
                     onChange={(event) => setPreviewText(event.target.value)}
-                    placeholder="Add the line that appears next to the subject"
+                    placeholder="填写主题旁边显示的一句话"
                   />
                 </label>
               </div>
@@ -467,10 +481,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Canvas</PanelTitle>
+                  <PanelTitle>正文画布</PanelTitle>
                   <PanelDescription>
-                    The canvas exposes selection state, drag placeholders, and
-                    block-level validation.
+                    点击区块后，在右侧编辑具体内容。
                   </PanelDescription>
                 </div>
                 <div className="flex gap-2">
@@ -480,7 +493,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                     size="sm"
                     onClick={() => setPreviewMode("desktop")}
                   >
-                    Desktop
+                    桌面
                   </Button>
                   <Button
                     type="button"
@@ -488,7 +501,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                     size="sm"
                     onClick={() => setPreviewMode("mobile")}
                   >
-                    Mobile
+                    手机
                   </Button>
                 </div>
               </PanelHeader>
@@ -521,7 +534,8 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                           data-ux-drop-placeholder=""
                           className="rounded-2xl border border-dashed border-primary bg-primary/5 p-4 text-sm font-medium text-primary"
                         >
-                          Drop {state.dragPreviewType ?? "block"} here
+                          放到这里：
+                          {state.dragPreviewType ? getBlockLabel(state.dragPreviewType) : "区块"}
                         </div>
                       ) : null}
                       <CanvasBlock
@@ -538,7 +552,8 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                       data-ux-drop-placeholder=""
                       className="rounded-2xl border border-dashed border-primary bg-primary/5 p-4 text-sm font-medium text-primary"
                     >
-                      Drop {state.dragPreviewType ?? "block"} at the end
+                      放到末尾：
+                      {state.dragPreviewType ? getBlockLabel(state.dragPreviewType) : "区块"}
                     </div>
                   ) : null}
                 </div>
@@ -555,9 +570,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Version history</PanelTitle>
+                  <PanelTitle>版本</PanelTitle>
                   <PanelDescription>
-                    Keep durable restore points before bigger content changes.
+                    大改前保存一个可恢复的版本。
                   </PanelDescription>
                 </div>
               </PanelHeader>
@@ -597,7 +612,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                               size="sm"
                               onClick={() => restoreVersion(version.id)}
                             >
-                              Restore
+                              恢复
                             </Button>
                           </div>
                         </div>
@@ -609,9 +624,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                         <EmptyMedia variant="icon">
                           <History />
                         </EmptyMedia>
-                        <EmptyTitle>No saved versions yet</EmptyTitle>
+                        <EmptyTitle>还没有保存版本</EmptyTitle>
                         <EmptyDescription>
-                          Save the first milestone before deeper structural edits.
+                          还没有保存版本，大改前可以先保存一次。
                         </EmptyDescription>
                       </EmptyHeader>
                     </Empty>
@@ -623,10 +638,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                     <EmptyMedia variant="icon">
                       <History />
                     </EmptyMedia>
-                    <EmptyTitle>Version history unavailable</EmptyTitle>
+                    <EmptyTitle>版本功能暂不可用</EmptyTitle>
                     <EmptyDescription>
-                      Run the editor storage migration to unlock persisted snapshots
-                      and restore points.
+                      编辑器数据表就绪后，才能使用版本保存和恢复。
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -636,9 +650,9 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
             <Panel className="gap-4">
               <PanelHeader>
                 <div>
-                  <PanelTitle>Inspector</PanelTitle>
+                  <PanelTitle>编辑区块</PanelTitle>
                   <PanelDescription>
-                    Edit the selected block without leaving the canvas.
+                    这里只显示当前选中区块的设置。
                   </PanelDescription>
                 </div>
               </PanelHeader>
@@ -646,17 +660,17 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
               {selectedBlock ? (
                 <div className="space-y-4">
                   <div className="rounded-2xl border bg-background p-3">
-                    <div className="text-sm font-semibold capitalize">
-                      {selectedBlock.type}
+                    <div className="text-sm font-semibold">
+                      {getBlockLabel(selectedBlock.type)}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
-                      {blockIssues[selectedBlock.id]?.[0] ?? "No blocking issues."}
+                      {blockIssues[selectedBlock.id]?.[0] ?? "没有阻塞问题。"}
                     </div>
                   </div>
 
                   {selectedBlock.type === "text" ? (
                     <label className="space-y-2">
-                      <span className="text-sm font-medium">Copy</span>
+                      <span className="text-sm font-medium">正文</span>
                       <textarea
                         className="min-h-40 w-full rounded-2xl border bg-background px-3 py-3 text-sm outline-none transition-colors duration-150 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                         value={selectedBlock.content}
@@ -670,7 +684,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                   {selectedBlock.type === "button" ? (
                     <div className="space-y-4">
                       <label className="space-y-2">
-                        <span className="text-sm font-medium">Label</span>
+                        <span className="text-sm font-medium">按钮文字</span>
                         <Input
                           value={selectedBlock.label}
                           onChange={(event) =>
@@ -679,7 +693,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                         />
                       </label>
                       <label className="space-y-2">
-                        <span className="text-sm font-medium">URL</span>
+                        <span className="text-sm font-medium">链接 URL</span>
                         <Input
                           value={selectedBlock.href}
                           onChange={(event) =>
@@ -693,7 +707,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                   {selectedBlock.type === "image" ? (
                     <div className="space-y-4">
                       <label className="space-y-2">
-                        <span className="text-sm font-medium">Image URL</span>
+                        <span className="text-sm font-medium">图片 URL</span>
                         <Input
                           value={selectedBlock.src}
                           onChange={(event) =>
@@ -702,7 +716,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                         />
                       </label>
                       <label className="space-y-2">
-                        <span className="text-sm font-medium">Alt text</span>
+                        <span className="text-sm font-medium">Alt 文本</span>
                         <Input
                           value={selectedBlock.alt}
                           onChange={(event) =>
@@ -715,7 +729,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
 
                   {selectedBlock.type === "html" ? (
                     <label className="space-y-2">
-                      <span className="text-sm font-medium">HTML snippet</span>
+                      <span className="text-sm font-medium">HTML 片段</span>
                       <textarea
                         className="min-h-40 w-full rounded-2xl border bg-background px-3 py-3 font-mono text-sm outline-none transition-colors duration-150 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                         value={selectedBlock.html}
@@ -728,7 +742,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
 
                   {selectedBlock.type === "divider" ? (
                     <div className="space-y-2">
-                      <span className="text-sm font-medium">Tone</span>
+                      <span className="text-sm font-medium">样式</span>
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -736,7 +750,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                           size="sm"
                           onClick={() => updateBlock(selectedBlock.id, { tone: "subtle" })}
                         >
-                          Subtle
+                          轻
                         </Button>
                         <Button
                           type="button"
@@ -744,7 +758,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                           size="sm"
                           onClick={() => updateBlock(selectedBlock.id, { tone: "strong" })}
                         >
-                          Strong
+                          强
                         </Button>
                       </div>
                     </div>
@@ -752,7 +766,7 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
 
                   {selectedBlock.type === "spacer" ? (
                     <div className="space-y-2">
-                      <span className="text-sm font-medium">Size</span>
+                      <span className="text-sm font-medium">高度</span>
                       <div className="flex flex-wrap gap-2">
                         {[16, 24, 32, 40].map((size) => (
                           <Button
@@ -778,53 +792,34 @@ export function EditorShell({ userName, initialBootstrap }: EditorShellProps) {
                     variant="destructive"
                     onClick={() => removeBlock(selectedBlock.id)}
                   >
-                    Remove block
+                    删除区块
                   </Button>
                 </div>
               ) : (
-                <Empty className="border border-dashed bg-muted/30">
+                <Empty className="border border-dashed bg-muted/30" data-ux-empty-state="">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <MailPlus />
                     </EmptyMedia>
-                    <EmptyTitle>Select a block</EmptyTitle>
+                    <EmptyTitle>请选择一个区块</EmptyTitle>
                     <EmptyDescription>
-                      The inspector becomes useful after you choose a block in the
-                      canvas.
+                      在正文画布中点击任一区块后，这里会显示可编辑字段。
                     </EmptyDescription>
                   </EmptyHeader>
+                  <EmptyContent>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      data-ux-empty-cta=""
+                      onClick={() => appendBlock("text")}
+                    >
+                      添加文本区块
+                    </Button>
+                  </EmptyContent>
                 </Empty>
               )}
             </Panel>
 
-            <Panel className="gap-4">
-              <PanelHeader>
-                <div>
-                  <PanelTitle>Reusable modules</PanelTitle>
-                  <PanelDescription>
-                    The module library is intentionally empty in this first pass.
-                  </PanelDescription>
-                </div>
-              </PanelHeader>
-
-              <Empty className="border border-dashed bg-muted/30" data-ux-empty-state="">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <MailPlus />
-                  </EmptyMedia>
-                  <EmptyTitle>No reusable modules yet</EmptyTitle>
-                  <EmptyDescription>
-                    Save a strong hero or CTA block pattern here once module
-                    persistence lands.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <Button type="button" variant="outline" data-ux-empty-cta="">
-                    Document the first reusable module
-                  </Button>
-                </EmptyContent>
-              </Empty>
-            </Panel>
           </aside>
         </div>
       </div>

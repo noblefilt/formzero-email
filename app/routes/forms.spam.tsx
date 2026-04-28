@@ -43,8 +43,8 @@ type SpamSubmission = {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Spam | FormZero" },
-  { name: "description", content: "查看自动标记为 Spam 的提交数据" },
+  { title: "垃圾邮件 | FormZero" },
+  { name: "description", content: "查看自动标记为垃圾邮件的提交数据" },
 ]
 
 function formatExactTime(timestamp: number) {
@@ -75,7 +75,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       id: row.id,
       createdAt: row.created_at,
       email: getSubmissionEmail(parsedData) || "No email",
-      message: getSubmissionMessage(parsedData) || "No message",
+      message: getSubmissionMessage(parsedData) || "无消息",
       sourceDomain: getSourceDomain(row.request_origin),
     }
   })
@@ -94,7 +94,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
             <EmptyMedia variant="icon">
               <ShieldAlert className="h-10 w-10" />
             </EmptyMedia>
-            <EmptyTitle>暂无 Spam</EmptyTitle>
+            <EmptyTitle>暂无垃圾邮件</EmptyTitle>
             <EmptyDescription>
               Honeypot 命中的提交会自动进入这里，不会触发邮件通知。
             </EmptyDescription>
@@ -116,7 +116,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>Spam</BreadcrumbPage>
+                <BreadcrumbPage>垃圾邮件</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -125,9 +125,9 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
 
       <div className="space-y-4 p-4 pt-0">
         <div>
-          <h2 className="text-lg font-semibold">Spam</h2>
+          <h2 className="text-lg font-semibold">垃圾邮件</h2>
           <p className="text-sm text-muted-foreground">
-            自动标记的垃圾提交，只显示时间、邮箱、Message 和来源域名。
+            自动标记的 Spam 提交，只显示时间、邮箱、消息和来源域名。
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
               <TableRow>
                 <TableHead>时间</TableHead>
                 <TableHead>邮箱</TableHead>
-                <TableHead>Message</TableHead>
+                <TableHead>消息</TableHead>
                 <TableHead>来源</TableHead>
               </TableRow>
             </TableHeader>

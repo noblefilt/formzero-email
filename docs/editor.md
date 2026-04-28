@@ -67,6 +67,11 @@ The editor must operate on a versioned JSON document with:
 - export feedback state
 - undo/redo history
 
+The visible editor interface should use Chinese labels and status messages for
+the operator. Stored document keys, block `type` values, command names, and
+export payloads remain English identifiers so existing data and tests stay
+stable.
+
 ## Command Rules
 
 All user mutations must flow through explicit commands.

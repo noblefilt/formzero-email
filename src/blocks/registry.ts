@@ -21,8 +21,8 @@ function createBlockId(type: EmailBlockType) {
 
 const textDefinition: BlockDefinition<TextBlock> = {
   type: "text",
-  label: "Text",
-  description: "Paragraph copy with live editing.",
+  label: "文本",
+  description: "正文段落，底层类型仍是 text。",
   create: () => ({
     id: createBlockId("text"),
     type: "text",
@@ -33,13 +33,13 @@ const textDefinition: BlockDefinition<TextBlock> = {
   validate: (block) =>
     block.content.trim()
       ? []
-      : [{ level: "warning", message: "Text block is empty." }],
+      : [{ level: "warning", message: "文本内容为空。" }],
 }
 
 const imageDefinition: BlockDefinition<ImageBlock> = {
   type: "image",
-  label: "Image",
-  description: "Hero or supporting image with alt text.",
+  label: "图片",
+  description: "图片和替代文本，底层类型仍是 image。",
   create: () => ({
     id: createBlockId("image"),
     type: "image",
@@ -52,11 +52,11 @@ const imageDefinition: BlockDefinition<ImageBlock> = {
     const issues: BlockValidation[] = []
 
     if (!block.src.trim()) {
-      issues.push({ level: "error", message: "Image source is required." })
+      issues.push({ level: "error", message: "图片地址必填。" })
     }
 
     if (!block.alt.trim()) {
-      issues.push({ level: "error", message: "Image alt text is required." })
+      issues.push({ level: "error", message: "图片 Alt 文本必填。" })
     }
 
     return issues
@@ -65,8 +65,8 @@ const imageDefinition: BlockDefinition<ImageBlock> = {
 
 const buttonDefinition: BlockDefinition<ButtonBlock> = {
   type: "button",
-  label: "Button",
-  description: "Primary call to action.",
+  label: "按钮",
+  description: "主要行动按钮，底层类型仍是 button。",
   create: () => ({
     id: createBlockId("button"),
     type: "button",
@@ -79,11 +79,11 @@ const buttonDefinition: BlockDefinition<ButtonBlock> = {
     const issues: BlockValidation[] = []
 
     if (!block.label.trim()) {
-      issues.push({ level: "error", message: "Button label is required." })
+      issues.push({ level: "error", message: "按钮文字必填。" })
     }
 
     if (!block.href.trim()) {
-      issues.push({ level: "error", message: "Button URL is required." })
+      issues.push({ level: "error", message: "按钮链接必填。" })
     }
 
     return issues
@@ -92,8 +92,8 @@ const buttonDefinition: BlockDefinition<ButtonBlock> = {
 
 const dividerDefinition: BlockDefinition<DividerBlock> = {
   type: "divider",
-  label: "Divider",
-  description: "Visual rhythm between content blocks.",
+  label: "分割线",
+  description: "分隔内容，底层类型仍是 divider。",
   create: () => ({
     id: createBlockId("divider"),
     type: "divider",
@@ -105,8 +105,8 @@ const dividerDefinition: BlockDefinition<DividerBlock> = {
 
 const spacerDefinition: BlockDefinition<SpacerBlock> = {
   type: "spacer",
-  label: "Spacer",
-  description: "Vertical breathing room.",
+  label: "间距",
+  description: "垂直留白，底层类型仍是 spacer。",
   create: () => ({
     id: createBlockId("spacer"),
     type: "spacer",
@@ -119,7 +119,7 @@ const spacerDefinition: BlockDefinition<SpacerBlock> = {
 const htmlDefinition: BlockDefinition<HtmlBlock> = {
   type: "html",
   label: "HTML",
-  description: "Escape hatch for custom markup.",
+  description: "自定义 HTML，底层类型仍是 html。",
   create: () => ({
     id: createBlockId("html"),
     type: "html",
@@ -129,7 +129,7 @@ const htmlDefinition: BlockDefinition<HtmlBlock> = {
   validate: (block) =>
     block.html.trim()
       ? []
-      : [{ level: "warning", message: "Custom HTML block is empty." }],
+      : [{ level: "warning", message: "HTML 内容为空。" }],
 }
 
 export const blockRegistry = [

@@ -81,7 +81,7 @@ function summarizeDocument(document: EmailDocument): string {
     return document.previewText.trim().slice(0, 96)
   }
 
-  return "Untitled email draft."
+  return "未命名邮件草稿。"
 }
 
 async function isStorageReady(db: D1Database) {
@@ -243,7 +243,7 @@ export async function loadEditorBootstrap(
     return {
       storageReady: false,
       storageMessage:
-        "Editor storage tables are missing. Run migrations before relying on persistent templates.",
+        "编辑器数据表还没有创建。完成迁移前会使用本地临时模式。",
       templates: [blankTemplate, ...defaultTemplates],
       versionsByTemplate: {},
     }
@@ -266,13 +266,13 @@ export async function mutateEditorStorage(
 ) {
   const ready = await isStorageReady(db)
   if (!ready) {
-    throw new Error("Editor storage is not ready. Run migrations first.")
+    throw new Error("编辑器云端存储尚未就绪，请先完成迁移。")
   }
 
   if (mutation.intent === "create_template") {
     const createdAt = Date.now()
     const templateId = createId("tmpl")
-    const name = mutation.name?.trim() || "Untitled Draft"
+    const name = mutation.name?.trim() || "未命名草稿"
     const document: EmailDocument = {
       ...blankTemplate.document,
       id: templateId,
@@ -353,7 +353,7 @@ export async function mutateEditorStorage(
       .first<{ name: string }>()
 
     if (!template) {
-      throw new Error("Template not found.")
+      throw new Error("找不到模板。")
     }
 
     await createVersionSnapshot(
@@ -378,7 +378,7 @@ export async function mutateEditorStorage(
       .first<{ template_name: string; document_json: string }>()
 
     if (!version) {
-      throw new Error("Version not found.")
+      throw new Error("找不到版本。")
     }
 
     const restoredDocument = parseDocument(version.document_json)

@@ -97,6 +97,9 @@ autosave, validation, preview, and export observe the same state transition.
 
 Required behaviors:
 
+- Editor-facing labels and operational messages are shown in Chinese, while
+  document schema fields, block `type` values, and export data remain stable
+  English identifiers.
 - Selection feedback is immediate.
 - Block insertion and drag movement show visible placement feedback.
 - Validation is live and visible before export.
@@ -104,6 +107,8 @@ Required behaviors:
 - Autosave failures preserve unsaved edits and expose retry.
 - Version restore creates a new recoverable snapshot instead of overwriting
   history silently.
+- Unimplemented reusable-module panels should stay hidden until module
+  persistence exists.
 
 ## Export Contract
 

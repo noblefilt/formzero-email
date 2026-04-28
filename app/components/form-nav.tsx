@@ -39,7 +39,7 @@ export function FormNav({ forms, spamCount = 0 }: FormNavProps) {
               <SidebarMenuButton asChild isActive={location.pathname === "/forms/spam"}>
                 <NavLink to="/forms/spam">
                   <ShieldAlert />
-                  <span>Spam</span>
+                  <span>垃圾邮件</span>
                 </NavLink>
               </SidebarMenuButton>
               {spamCount > 0 ? (

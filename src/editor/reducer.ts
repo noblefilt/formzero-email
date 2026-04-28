@@ -16,11 +16,11 @@ function validateDocument(document: EmailDocument): EditorValidationState {
   const documentIssues: string[] = []
 
   if (!document.subject.trim()) {
-    documentIssues.push("Add a subject before export.")
+    documentIssues.push("导出前需要填写邮件主题。")
   }
 
   if (!document.previewText.trim()) {
-    documentIssues.push("Preview text is empty. Add a line for inbox context.")
+    documentIssues.push("预览文字为空，请补一句收件箱摘要。")
   }
 
   document.blocks.forEach((block) => {
@@ -91,7 +91,7 @@ export function createInitialEditorState(template: EditorState["activeTemplate"]
     dragPreviewType: null,
     dropPlaceholderIndex: null,
     lastExportHtml: "",
-    lastMessage: "Workspace ready.",
+    lastMessage: "工作区已就绪。",
   }
 }
 
