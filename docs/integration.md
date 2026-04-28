@@ -13,7 +13,9 @@ server-side form submissions.
 ## Spam quarantine
 
 If `_gotcha` is present and non-empty, the submission is still accepted and
-stored, but it is marked as Spam.
+stored, but it is marked as Spam. The operator can also manually mark a normal
+inbox submission as Spam from the submission row menu, bulk actions, or detail
+panel.
 
 Spam submissions:
 
@@ -23,6 +25,11 @@ Spam submissions:
 - do not emit webhooks
 - still return the same success response or redirect as a normal accepted
   submission
+
+Notification emails and inbox display intentionally hide tracking metadata such
+as `source`, `page_url`, UTM fields, `_gotcha`, and `_redirect`. These values may
+still be stored for operational context, but they are not treated as user
+message content.
 
 ## Allowed origins
 

@@ -687,7 +687,7 @@ const idempotencyKey = crypto.randomUUID()
 const payload = {
   name: 'Jane Doe',
   email: 'jane@example.com',
-  message: 'I would like a quote for a custom email template.',
+  message: 'I would like a quote for a custom project.',
   _gotcha: '',
 }
 

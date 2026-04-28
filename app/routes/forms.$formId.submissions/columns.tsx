@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Eye, Trash2, Star, Archive, ArchiveRestore } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Eye, Trash2, Star, Archive, ArchiveRestore, ShieldAlert } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import { Button } from "#/components/ui/button"
@@ -15,6 +15,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "#/components/ui/tooltip"
+import {
+  getSubmissionFieldLabel,
+  getVisibleSubmissionEntries,
+  normalizeSubmissionFieldKey,
+} from "~/lib/submission-display"
 
 export type Submission = {
   id: string
@@ -33,6 +38,7 @@ export function createColumns(
     onDelete?: (id: string) => void
     onToggleStar?: (id: string) => void
     onToggleArchive?: (id: string) => void
+    onMarkSpam?: (id: string) => void
   }
 ): ColumnDef<Submission>[] {
   // Time column comes first
@@ -82,20 +88,22 @@ export function createColumns(
   // Extract all unique field names from submission data
   const fieldNames = new Set<string>()
   submissions.forEach((submission) => {
-    Object.keys(submission.data).forEach((key) => fieldNames.add(key))
+    getVisibleSubmissionEntries(submission.data).forEach(([key]) => {
+      fieldNames.add(key)
+    })
   })
 
   // Sort field names: email first if exists, then alphabetically
   const sortedFields = Array.from(fieldNames).sort((a, b) => {
-    if (a === "email") return -1
-    if (b === "email") return 1
+    if (normalizeSubmissionFieldKey(a) === "email") return -1
+    if (normalizeSubmissionFieldKey(b) === "email") return 1
     return a.localeCompare(b)
   })
 
   // Create columns for each field
   const dataColumns: ColumnDef<Submission>[] = sortedFields.map((fieldName) => {
     // Make email column sortable
-    if (fieldName === "email") {
+    if (normalizeSubmissionFieldKey(fieldName) === "email") {
       return {
         id: fieldName,
         accessorFn: (row) => row.data[fieldName],
@@ -105,7 +113,7 @@ export function createColumns(
               variant="ghost"
               onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             >
-              邮箱
+              {getSubmissionFieldLabel(fieldName)}
               <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
           )
@@ -121,7 +129,7 @@ export function createColumns(
     return {
       id: fieldName,
       accessorFn: (row) => row.data[fieldName],
-      header: fieldName.charAt(0).toUpperCase() + fieldName.slice(1),
+      header: getSubmissionFieldLabel(fieldName),
       cell: ({ row }) => {
         const value = row.original.data[fieldName]
         return <div className="text-sm">{value?.toString() || ""}</div>
@@ -176,6 +184,16 @@ export function createColumns(
               ) : (
                 <><Archive className="mr-2 h-4 w-4" />归档</>
               )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (confirm("确定将此提交标为垃圾邮件吗？")) {
+                  options?.onMarkSpam?.(submission.id)
+                }
+              }}
+            >
+              <ShieldAlert className="mr-2 h-4 w-4" />
+              标为垃圾邮件
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"

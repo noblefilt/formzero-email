@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, MailPlus, ShieldAlert } from "lucide-react"
+import { FileText, LayoutDashboard, ShieldAlert } from "lucide-react"
 import { NavLink, useLocation, useParams } from "react-router"
 import type { Form } from "#/types/form"
 
@@ -45,14 +45,6 @@ export function FormNav({ forms, spamCount = 0 }: FormNavProps) {
               {spamCount > 0 ? (
                 <SidebarMenuBadge>{spamCount}</SidebarMenuBadge>
               ) : null}
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/editor"}>
-                <NavLink to="/editor">
-                  <MailPlus />
-                  <span>邮件编辑器</span>
-                </NavLink>
-              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>

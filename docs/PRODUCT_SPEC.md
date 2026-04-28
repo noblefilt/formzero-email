@@ -2,178 +2,141 @@
 
 ## Product Direction
 
-FormZero is being narrowed into a personal-use, professional email template
-editor backed by the existing Cloudflare Workers and D1 application shell.
+FormZero is a private form-submission inbox for one operator. It receives form
+submissions from the user's own sites, sends clean replyable email notifications,
+and keeps a searchable backend inbox for review, archive, deletion, and spam
+triage.
 
-The benchmark is commercial-grade reliability for one operator, not team
-collaboration. The product should feel trustworthy enough for daily email
-template work: fast editing, predictable preview, deterministic export, clear
-recovery, and safe persistence.
+The benchmark is simplicity and reliability, not SEO, team workflows, or an
+email-template editor. The product should stay small enough to trust daily.
 
 ## Primary User
 
-The primary user is a single site operator who needs to create, edit, preview,
-version, and export reusable email templates without managing a separate email
-design tool.
-
-The product may still support the original form-submission workflow where it is
-already implemented, but new architecture should optimize for the email editor
-surface first.
+The primary user is a single site operator who needs to receive contact-form and
+lead-form messages from multiple websites without running a public CRM.
 
 ## Core Jobs
 
-1. Create a new email template from a blank or starter template.
-2. Edit subject, preview text, and ordered content blocks with immediate
-   feedback.
-3. Preview the same document shape that export will render.
-4. Export deterministic HTML suitable for email delivery.
-5. Autosave edits without relying on a manual save loop.
-6. Save and restore named versions of a template.
-7. Recover from failed persistence or export without data loss.
-8. Delete templates intentionally, with confirmation or recovery.
+1. Receive submissions from configured forms.
+2. Send a clean email notification that can be replied to directly in Gmail.
+3. Keep submitted data in the authenticated FormZero backend.
+4. Mark submissions as read, starred, archived, deleted, or spam.
+5. Keep automatically detected spam out of the normal inbox.
+6. Review spam in one dedicated Spam view.
+7. Keep crawler and sitemap behavior disabled because this is a private tool.
 
 ## Product Scope
 
 ### In Scope
 
-- A versioned email document schema.
-- Typed reusable email blocks.
-- Editor commands for every mutation.
-- Undo and redo with at least 50 history steps.
-- Autosave with visible `idle`, `saving`, `saved`, and `error` states.
-- Retry or cancel controls for realistic async failure paths.
-- Template persistence in D1.
-- Starter templates and blank-template creation.
-- Version snapshots, restore, and deletion.
-- Multi-mode preview for desktop, mobile, and dark mode.
-- Deterministic HTML export isolated from the React UI.
-- Route-level resilience for public utility URLs and unknown requests.
-- Private-tool crawler policy: the app must advertise `noindex`, block all
-  robots, and avoid publishing a sitemap.
-- Existing form submissions may be quarantined as Spam when the built-in
-  honeypot is filled.
+- Private authenticated dashboard.
+- Form submission API.
+- Form integration instructions.
+- Notification settings and test email.
+- Replyable submission notification emails.
+- Normal submissions inbox with read, star, archive, delete, and manual spam actions.
+- Spam quarantine for honeypot submissions and manually marked spam.
+- Spam list showing time, email, message, and source domain.
+- Route-level resilience for utility URLs and unknown requests.
+- Private-tool crawler policy: `noindex`, blocked robots, and no published sitemap.
 
 ### Out Of Scope
 
+- SEO features.
+- Public sitemap generation.
+- Email-template editor.
+- Template marketplace features.
 - Multitenancy.
 - RBAC.
 - Approval workflows.
-- Team comments.
 - Billing.
-- Public template marketplace features.
-- Speculative backend operations that do not have complete UI feedback states.
+- Speculative backend operations without visible UI feedback.
 
 ## Information Architecture
 
 ### Public And Utility Routes
 
-- `/login` signs an existing operator into the workspace.
-- `/signup` creates the first and only local operator account.
+- `/login` signs the operator into the workspace.
+- `/signup` creates the first local operator account.
 - `/success` and `/error` support form-submission redirects.
 - `/robots.txt` blocks all crawlers.
 - `/sitemap.xml` is intentionally disabled for this private tool.
-- Unknown URLs must return an intentional 404 response instead of surfacing as
-  unmatched-route runtime errors.
+- Unknown URLs return an intentional 404 response.
 
 ### Authenticated Workspace Routes
 
-- `/forms/dashboard` keeps the existing submission overview available.
-- `/forms/spam` shows automatically quarantined spam submissions with only
-  time, email, message, and source domain.
-- `/forms/:formId/submissions` keeps existing submission inspection available.
-- `/forms/:formId/integration` keeps existing form integration setup available.
-- `/editor` is the email template editor and must be reachable from the
-  authenticated workspace navigation.
+- `/forms/dashboard` shows the private submission overview.
+- `/forms/spam` shows quarantined spam submissions with time, email, message,
+  and source domain.
+- `/forms/:formId/submissions` shows the normal inbox for a form and supports
+  read, star, archive, delete, and manual spam marking.
+- `/forms/:formId/integration` keeps form integration setup available.
 - `/settings/notifications` controls notification settings.
 
-## Editor Contract
+## Notification Contract
 
-The editor must be modeled around a versioned document, not scattered component
-state. Components may display and collect input, but they must not own document
-mutation rules.
+Submission notification emails must behave like direct messages:
 
-Every mutation should flow through explicit commands or transactions so history,
-autosave, validation, preview, and export observe the same state transition.
+- `Reply-To` points to the submitter email when available.
+- The visible email body shows only the submitter name, email, and message.
+- Source metadata such as `source`, `page_url`, UTM fields, redirects, and
+  honeypot fields must not appear in the email body.
+- Notification HTML must stay plain and undecorated: no gray page background,
+  decorative card shell, footer metadata table, or FormZero branding block.
+- Spam submissions do not send email notifications.
 
-Required behaviors:
+## Inbox Contract
 
-- Editor-facing labels and operational messages are shown in Chinese, while
-  document schema fields, block `type` values, and export data remain stable
-  English identifiers.
-- Selection feedback is immediate.
-- Block insertion and drag movement show visible placement feedback.
-- Validation is live and visible before export.
-- Export is disabled when blocking validation issues exist.
-- Autosave failures preserve unsaved edits and expose retry.
-- Version restore creates a new recoverable snapshot instead of overwriting
-  history silently.
-- Unimplemented reusable-module panels should stay hidden until module
-  persistence exists.
+The normal submissions inbox must show user-facing form fields and hide tracking
+metadata from table columns, detail panels, and CSV export.
 
-## Export Contract
+Required actions:
 
-Export is a product trust boundary. The preview and exported HTML must be based
-on the same normalized document input.
+- mark read / unread,
+- star / unstar,
+- archive / unarchive,
+- mark as spam,
+- delete with confirmation.
 
-Required behaviors:
+Marking a normal submission as spam moves it out of the normal inbox by setting
+`is_spam = 1`.
 
-- HTML generation is deterministic for the same document.
-- Export logic is testable without rendering the app.
-- Export failures surface human-readable recovery guidance in the UI.
-- Partial export failures must not be hidden behind console output.
+## Spam Contract
 
-## Persistence Contract
+Spam can enter the quarantine in two ways:
 
-D1 persistence must be explicit and recoverable.
+- automatically when the built-in honeypot field is filled,
+- manually when the operator marks a normal submission as spam.
 
-Required behaviors:
-
-- The editor can enter a local fallback mode when editor tables are missing.
-- The UI must clearly label local-only fallback mode.
-- Server persistence failures must keep the current draft in memory.
-- Retrying persistence must reuse the latest unsaved document.
-- Deleted templates must not be listed as active templates.
-
-## UX Standard
-
-All editor-facing work must comply with `docs/UX_STANDARDS.md`.
-
-The most important rules are:
-
-- Every user action exposes immediate feedback.
-- Validation appears during input.
-- Empty states include guidance and a next action.
-- Async operations expose retry or cancel where delay or failure is realistic.
-- No destructive action ships without confirmation or recovery.
-- Blank pages are defects.
+Spam submissions are accepted and stored, but they do not trigger email or
+webhook side effects. The Spam page should stay intentionally small: time,
+email, message, and source domain.
 
 ## Engineering Standard
 
 Implementation should remain simple and modular.
 
-Preferred architecture:
+Preferred ownership:
 
-- `src/editor/` owns editor state, command dispatch, history, autosave, and
-  validation.
-- `src/blocks/` owns block schemas, defaults, validation, preview behavior, and
-  export behavior.
-- `src/export/` owns deterministic HTML rendering and download behavior.
-- `src/templates/` owns template records, starter templates, and version data.
-- `src/preview/` owns visual preview surfaces.
-- `src/ui/` owns shared primitives and feedback patterns.
+- `app/routes/api.forms.$formId.submissions.tsx` owns submission intake.
+- `app/routes/forms.$formId.submissions.tsx` owns normal inbox actions.
+- `app/routes/forms.spam.tsx` owns spam review.
+- `app/lib/email.server.ts` owns notification email rendering and delivery.
+- `app/lib/submission-spam.ts` owns spam classification and submission parsing helpers.
+- `app/lib/submission-display.ts` owns which submitted fields are shown to the operator.
 
-When code and this spec diverge, the same change must either update the spec or
-stop and resolve the conflict.
+When code and this spec diverge, update the spec in the same change or stop and
+resolve the conflict.
 
 ## Release Gates
 
-A release-quality change must pass:
+A release-quality change should pass:
 
 1. `npm run test:routes`
 2. `npm run lint:ux`
 3. `npm run typecheck`
-4. `npm run test:ux`
+4. `npm run test:unit`
 5. `npm run build`
 
-If one of these cannot be run in the local environment, the reason must be
-reported with the closest completed verification.
+If one of these cannot be run locally, report the reason with the closest
+completed verification.

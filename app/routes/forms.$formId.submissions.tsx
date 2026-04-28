@@ -10,9 +10,10 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-import { Inbox, TrendingUp, TrendingDown, Download, Trash2, Star, Archive, MailOpen, MailCheck } from "lucide-react"
+import { Inbox, TrendingUp, TrendingDown, Download, Trash2, Star, Archive, MailOpen, MailCheck, ShieldAlert } from "lucide-react"
 import type { ChartConfig } from "~/components/ui/chart"
 import { requireAuth } from "~/lib/require-auth.server"
+import { getVisibleSubmissionEntries } from "~/lib/submission-display"
 import { useState, useCallback } from "react"
 
 export const meta: Route.MetaFunction = () => {
@@ -136,6 +137,21 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     return data({ success: true })
   }
 
+  if (intent === "mark_spam") {
+    const ids = formData.getAll("ids") as string[]
+    if (ids.length === 0) return data({ error: "未选择提交数据" }, { status: 400 })
+
+    const placeholders = ids.map(() => "?").join(", ")
+    await database
+      .prepare(
+        `UPDATE submissions SET is_spam = 1, is_archived = 0 WHERE id IN (${placeholders}) AND form_id = ?`
+      )
+      .bind(...ids, params.formId)
+      .run()
+
+    return data({ success: true, markedSpam: ids.length })
+  }
+
   if (intent === "toggle_star") {
     const id = formData.get("id") as string
     if (!id) return data({ error: "缺少提交 ID" }, { status: 400 })
@@ -209,6 +225,19 @@ export default function SubmissionsPage() {
     handleDeleteIds([id])
   }, [handleDeleteIds])
 
+  const handleMarkSpamIds = useCallback((ids: string[]) => {
+    if (ids.length === 0) return
+    const formData = new FormData()
+    formData.append("intent", "mark_spam")
+    ids.forEach((id) => formData.append("ids", id))
+    statusFetcher.submit(formData, { method: "post" })
+  }, [statusFetcher])
+
+  const handleMarkSpamSingle = useCallback((id: string) => {
+    handleMarkSpamIds([id])
+    setSelectedIds((current) => current.filter((selectedId) => selectedId !== id))
+  }, [handleMarkSpamIds])
+
   const handleViewDetail = useCallback((submission: Submission) => {
     setDetailSubmission(submission)
     setDetailOpen(true)
@@ -249,12 +278,20 @@ export default function SubmissionsPage() {
     onDelete: handleDeleteSingle,
     onToggleStar: handleToggleStar,
     onToggleArchive: handleToggleArchive,
+    onMarkSpam: handleMarkSpamSingle,
   })
 
   const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return
     if (!confirm(`确定要删除这 ${selectedIds.length} 条提交数据吗？此操作不可撤销。`)) return
     handleDeleteIds(selectedIds)
+    setSelectedIds([])
+  }
+
+  const handleMarkSelectedSpam = () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`确定将这 ${selectedIds.length} 条提交标为垃圾邮件吗？`)) return
+    handleMarkSpamIds(selectedIds)
     setSelectedIds([])
   }
 
@@ -274,7 +311,7 @@ export default function SubmissionsPage() {
     // Get all unique keys from all submissions
     const allKeys = new Set<string>()
     submissions.forEach(sub => {
-      Object.keys(sub.data).forEach(key => allKeys.add(key))
+      getVisibleSubmissionEntries(sub.data).forEach(([key]) => allKeys.add(key))
     })
     const dataKeys = Array.from(allKeys).sort()
 
@@ -460,6 +497,15 @@ export default function SubmissionsPage() {
                     标为已读
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleMarkSelectedSpam}
+                    className="h-9 gap-1.5 text-xs"
+                  >
+                    <ShieldAlert className="h-3 w-3" />
+                    标为垃圾邮件
+                  </Button>
+                  <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleDeleteSelected}
@@ -492,6 +538,7 @@ export default function SubmissionsPage() {
         onDelete={handleDeleteSingle}
         onToggleStar={handleToggleStar}
         onToggleArchive={handleToggleArchive}
+        onMarkSpam={handleMarkSpamSingle}
         isDeleting={fetcher.state === "submitting"}
       />
     </div>

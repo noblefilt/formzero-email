@@ -15,7 +15,6 @@ export default [
       route("integration", "routes/forms.$formId.integration.tsx"),
     ]),
   ]),
-  route("/editor", "routes/editor.tsx"),
   route("settings/notifications", "routes/settings.notifications.tsx"),
   route("settings/notifications/test", "routes/settings.notifications.test.tsx"),
 

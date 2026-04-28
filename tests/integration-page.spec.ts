@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 const authEmail =
-  process.env.PLAYWRIGHT_AUTH_EMAIL || "playwright-editor@example.com"
+  process.env.PLAYWRIGHT_AUTH_EMAIL || "playwright-inbox@example.com"
 const authPassword =
   process.env.PLAYWRIGHT_AUTH_PASSWORD || "Playwright123!"
 const authName = process.env.PLAYWRIGHT_AUTH_NAME || "Playwright UX"

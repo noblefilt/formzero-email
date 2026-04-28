@@ -21,6 +21,8 @@ test("submission notification email behaves like a direct replyable message", ()
         email: "ada@example.com",
         message: "Can you send details?",
         budget: "$500",
+        source: "modal",
+        page_url: "https://example.com/contact",
       },
     }
   )
@@ -30,7 +32,9 @@ test("submission notification email behaves like a direct replyable message", ()
   assert.equal(message.from, "Ada Lovelace <inbox@example.com>")
   assert.match(message.subject, /Ada Lovelace/)
   assert.match(message.text, /Can you send details?/)
-  assert.match(message.text, /Budget: \$500/)
+  assert.doesNotMatch(message.text, /Budget|Source|Page Url|page_url|modal|https:\/\/example\.com\/contact/)
+  assert.doesNotMatch(message.html, /Budget|Source|Page Url|page_url|modal|https:\/\/example\.com\/contact/)
   assert.doesNotMatch(message.text, /FormZero|提交 ID|来源|接收时间/)
   assert.doesNotMatch(message.html, /FormZero|提交 ID|来源|接收时间/)
+  assert.doesNotMatch(message.html, /background-color:\s*#f7f7f7|max-width:\s*640px|border-radius:\s*12px/)
 })

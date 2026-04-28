@@ -41,9 +41,14 @@ for (const file of typedRouteFiles) {
   )
 }
 
-for (const path of ["/editor", "spam", "/robots.txt", "/sitemap.xml", "*"]) {
+for (const path of ["spam", "/robots.txt", "/sitemap.xml", "*"]) {
   assert(
     registeredPaths.has(path),
     `app/routes.ts must register ${path} so production requests do not fall into React Router's unmatched-route error path`
   )
 }
+
+assert(
+  !registeredPaths.has("/editor"),
+  "app/routes.ts must not register /editor because the email editor has been removed"
+)

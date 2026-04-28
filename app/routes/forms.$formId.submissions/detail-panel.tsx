@@ -1,8 +1,12 @@
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
-import { Trash2, Clock, Copy, Check, Star, Archive, ArchiveRestore } from "lucide-react"
+import { Trash2, Clock, Copy, Check, Star, Archive, ArchiveRestore, ShieldAlert } from "lucide-react"
 import { useState } from "react"
 import type { Submission } from "./columns"
+import {
+  getSubmissionFieldLabel,
+  getVisibleSubmissionEntries,
+} from "~/lib/submission-display"
 import {
   Sheet,
   SheetContent,
@@ -21,6 +25,7 @@ interface DetailPanelProps {
   onDelete: (id: string) => void
   onToggleStar?: (id: string) => void
   onToggleArchive?: (id: string) => void
+  onMarkSpam?: (id: string) => void
   isDeleting?: boolean
 }
 
@@ -31,6 +36,7 @@ export function DetailPanel({
   onDelete,
   onToggleStar,
   onToggleArchive,
+  onMarkSpam,
   isDeleting,
 }: DetailPanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -56,7 +62,7 @@ export function DetailPanel({
     onOpenChange(false)
   }
 
-  const dataEntries = Object.entries(submission.data)
+  const dataEntries = getVisibleSubmissionEntries(submission.data)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -83,7 +89,7 @@ export function DetailPanel({
                 <div key={key} className="group rounded-lg border p-3 transition-colors hover:bg-muted/50">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      {key}
+                      {getSubmissionFieldLabel(key)}
                     </label>
                     {displayValue && (
                       <Button
@@ -116,9 +122,6 @@ export function DetailPanel({
         <Separator />
 
         <SheetFooter className="flex-row gap-2">
-          <div className="text-xs text-muted-foreground truncate flex-1">
-            ID: {submission.id}
-          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -139,6 +142,19 @@ export function DetailPanel({
             ) : (
               <><Archive className="h-3.5 w-3.5" />归档</>
             )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!confirm("确定将此提交标为垃圾邮件吗？")) return
+              onMarkSpam?.(submission.id)
+              onOpenChange(false)
+            }}
+            className="gap-1.5"
+          >
+            <ShieldAlert className="h-3.5 w-3.5" />
+            标为垃圾邮件
           </Button>
           <Button
             variant="destructive"
