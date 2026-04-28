@@ -23,8 +23,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const formsResult = await database
     .prepare(
       `SELECT f.id, f.name,
-              COUNT(s.id) as submission_count,
-              SUM(CASE WHEN s.is_read = 0 AND s.is_archived = 0 THEN 1 ELSE 0 END) as unread_count
+              SUM(CASE WHEN s.id IS NOT NULL AND COALESCE(s.is_spam, 0) = 0 THEN 1 ELSE 0 END) as submission_count,
+              SUM(CASE WHEN s.id IS NOT NULL AND COALESCE(s.is_spam, 0) = 0 AND s.is_read = 0 AND s.is_archived = 0 THEN 1 ELSE 0 END) as unread_count
        FROM forms f
        LEFT JOIN submissions s ON f.id = s.form_id
        GROUP BY f.id, f.name
@@ -36,8 +36,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     submission_count: number
     unread_count: number
   })[]
+  const spamResult = await database
+    .prepare("SELECT COUNT(*) AS count FROM submissions WHERE COALESCE(is_spam, 0) = 1")
+    .first<{ count: number }>()
 
-  return { user, bootstrap, forms }
+  return { user, bootstrap, forms, spamCount: spamResult?.count ?? 0 }
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -67,7 +70,11 @@ export async function action({ request, context }: Route.ActionArgs) {
 export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return (
     <SidebarProvider>
-      <AppSidebar forms={loaderData.forms} user={loaderData.user} />
+      <AppSidebar
+        forms={loaderData.forms}
+        user={loaderData.user}
+        spamCount={loaderData.spamCount}
+      />
       <SidebarInset>
         <EditorShell
           userName={loaderData.user.name}

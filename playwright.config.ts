@@ -1,7 +1,14 @@
 import { defineConfig } from "@playwright/test"
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4173"
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4175"
+const parsedBaseURL = new URL(baseURL)
+const webServerHost = parsedBaseURL.hostname
+const webServerPort =
+  parsedBaseURL.port || (parsedBaseURL.protocol === "https:" ? "443" : "80")
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === "1"
+const webServerCommand =
+  process.env.PLAYWRIGHT_WEBSERVER_COMMAND ||
+  `mkdir -p .wrangler/playwright-home && HOME=$PWD/.wrangler/playwright-home CHOKIDAR_USEPOLLING=1 BETTER_AUTH_BASE_URL=${baseURL} npm run dev -- --host ${webServerHost} --port ${webServerPort}`
 
 export default defineConfig({
   testDir: "./tests",
@@ -17,7 +24,6 @@ export default defineConfig({
     : [["list"]],
   use: {
     baseURL,
-    channel: "chrome",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -25,7 +31,7 @@ export default defineConfig({
   webServer: disableWebServer
     ? undefined
     : {
-        command: "npm run dev -- --host 127.0.0.1 --port 4173",
+        command: webServerCommand,
         url: `${baseURL}/login`,
         reuseExistingServer: true,
         timeout: 120_000,

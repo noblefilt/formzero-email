@@ -10,6 +10,7 @@ import {
 } from "~/lib/allowed-origins";
 import { deliverWebhook } from "~/lib/webhooks";
 import { extractBearerToken, verifyServerToken } from "~/lib/server-token";
+import { cleanSubmissionData, isSpamSubmission } from "~/lib/submission-spam";
 
 function isIdempotencyConflict(error: unknown) {
   return (
@@ -174,18 +175,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       return redirect("/error?error=unsupported_content_type");
     }
 
-    // --- Honeypot spam protection ---
-    // If _gotcha field has a value, silently reject (bots fill all fields)
-    if (submissionData._gotcha) {
-      // Return fake success to not alert bots
-      if (isJsonRequest) {
-        return data(
-          { success: true, id: crypto.randomUUID() },
-          { status: 201, headers: corsHeaders }
-        );
-      }
-      return redirect("/success", 303);
-    }
+    const isSpam = isSpamSubmission(submissionData)
 
     // --- IP-based rate limiting ---
     const clientIP = request.headers.get("cf-connecting-ip")
@@ -223,15 +213,13 @@ export async function action({ request, params, context }: Route.ActionArgs) {
 
     // Extract _redirect from submission data (hidden field) and remove from stored data
     const formRedirectUrl = submissionData._redirect as string | undefined;
-    const cleanedData = { ...submissionData };
-    delete cleanedData._redirect;
-    delete cleanedData._gotcha;
+    const cleanedData = cleanSubmissionData(submissionData);
 
     // Store submission in database
     try {
       await db
         .prepare(
-          "INSERT INTO submissions (id, form_id, data, created_at, ip_address, idempotency_key, request_origin, request_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+          "INSERT INTO submissions (id, form_id, data, created_at, ip_address, idempotency_key, request_origin, request_source, is_spam) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(
           submissionId,
@@ -241,7 +229,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           clientIP,
           idempotencyKey,
           normalizedRequestOrigin,
-          requestSource
+          requestSource,
+          isSpam ? 1 : 0
         )
         .run();
     } catch (error) {
@@ -273,98 +262,100 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       throw error
     }
 
-    // Send email notification asynchronously (don't await to avoid blocking response)
-    // This runs in the background after the response is sent
-    context.cloudflare.ctx.waitUntil(
-      (async () => {
-        try {
-          const backgroundTasks: Promise<unknown>[] = []
+    if (!isSpam) {
+      // Send email notification asynchronously (don't await to avoid blocking response)
+      // This runs in the background after the response is sent
+      context.cloudflare.ctx.waitUntil(
+        (async () => {
+          try {
+            const backgroundTasks: Promise<unknown>[] = []
 
-          // Check per-form email settings first, then fall back to global
-          let emailConfig: EmailConfig | null = null;
-
-          if (
-            form.notification_email &&
-            form.notification_email_password &&
-            form.smtp_host &&
-            form.smtp_port
-          ) {
-            // Use per-form email settings
-            emailConfig = {
-              notification_email: form.notification_email,
-              notification_email_password: form.notification_email_password,
-              smtp_host: form.smtp_host,
-              smtp_port: form.smtp_port,
-            };
-          } else {
-            // Fall back to global settings
-            const globalSettings = await db
-              .prepare(
-                "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
-              )
-              .first<{
-                notification_email: string | null
-                notification_email_password: string | null
-                smtp_host: string | null
-                smtp_port: number | null
-              }>();
+            // Check per-form email settings first, then fall back to global
+            let emailConfig: EmailConfig | null = null;
 
             if (
-              globalSettings?.notification_email &&
-              globalSettings?.notification_email_password &&
-              globalSettings?.smtp_host &&
-              globalSettings?.smtp_port
+              form.notification_email &&
+              form.notification_email_password &&
+              form.smtp_host &&
+              form.smtp_port
             ) {
+              // Use per-form email settings
               emailConfig = {
-                notification_email: globalSettings.notification_email,
-                notification_email_password: globalSettings.notification_email_password,
-                smtp_host: globalSettings.smtp_host,
-                smtp_port: globalSettings.smtp_port,
+                notification_email: form.notification_email,
+                notification_email_password: form.notification_email_password,
+                smtp_host: form.smtp_host,
+                smtp_port: form.smtp_port,
               };
+            } else {
+              // Fall back to global settings
+              const globalSettings = await db
+                .prepare(
+                  "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
+                )
+                .first<{
+                  notification_email: string | null
+                  notification_email_password: string | null
+                  smtp_host: string | null
+                  smtp_port: number | null
+                }>();
+
+              if (
+                globalSettings?.notification_email &&
+                globalSettings?.notification_email_password &&
+                globalSettings?.smtp_host &&
+                globalSettings?.smtp_port
+              ) {
+                emailConfig = {
+                  notification_email: globalSettings.notification_email,
+                  notification_email_password: globalSettings.notification_email_password,
+                  smtp_host: globalSettings.smtp_host,
+                  smtp_port: globalSettings.smtp_port,
+                };
+              }
             }
-          }
 
-          if (emailConfig) {
-            backgroundTasks.push(
-              sendSubmissionNotification(emailConfig, {
-                id: submissionId,
-                formId: formId,
-                formName: form.name,
-                data: cleanedData,
-                createdAt: createdAt,
-              })
-            )
-          }
-
-          if (form.webhook_url && form.webhook_secret) {
-            backgroundTasks.push(
-              deliverWebhook({
-                db,
-                form: {
-                  id: form.id,
-                  name: form.name,
-                  webhook_url: form.webhook_url,
-                  webhook_secret: form.webhook_secret,
-                },
-                submission: {
+            if (emailConfig) {
+              backgroundTasks.push(
+                sendSubmissionNotification(emailConfig, {
                   id: submissionId,
-                  createdAt,
-                  idempotencyKey,
-                  source: requestSource,
-                  origin: normalizedRequestOrigin,
+                  formId: formId,
+                  formName: form.name,
                   data: cleanedData,
-                },
-              })
-            )
-        }
+                  createdAt: createdAt,
+                })
+              )
+            }
 
-          await Promise.allSettled(backgroundTasks)
-        } catch (error) {
-          // Log error but don't fail the request
-          console.error("Failed to run submission side effects:", error);
-        }
-      })()
-    );
+            if (form.webhook_url && form.webhook_secret) {
+              backgroundTasks.push(
+                deliverWebhook({
+                  db,
+                  form: {
+                    id: form.id,
+                    name: form.name,
+                    webhook_url: form.webhook_url,
+                    webhook_secret: form.webhook_secret,
+                  },
+                  submission: {
+                    id: submissionId,
+                    createdAt,
+                    idempotencyKey,
+                    source: requestSource,
+                    origin: normalizedRequestOrigin,
+                    data: cleanedData,
+                  },
+                })
+              )
+            }
+
+            await Promise.allSettled(backgroundTasks)
+          } catch (error) {
+            // Log error but don't fail the request
+            console.error("Failed to run submission side effects:", error);
+          }
+        })()
+      );
+    }
 
     if (isJsonRequest) {
       // Return JSON response

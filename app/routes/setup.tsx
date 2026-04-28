@@ -16,7 +16,10 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
 
   // Redirect to login if not authenticated
-  const auth = getAuth({ database })
+  const auth = getAuth({
+    database,
+    baseURL: new URL(request.url).origin,
+  })
   const session = await auth.api.getSession({
     headers: request.headers
   })

@@ -49,7 +49,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   // Fetch all submissions
   const submissionsResult = await database
-    .prepare("SELECT id, form_id, created_at FROM submissions ORDER BY created_at DESC")
+    .prepare(
+      "SELECT id, form_id, created_at FROM submissions WHERE COALESCE(is_spam, 0) = 0 ORDER BY created_at DESC"
+    )
     .all()
   const submissions = submissionsResult.results as { id: string; form_id: string; created_at: number }[]
 

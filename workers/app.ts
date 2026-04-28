@@ -16,8 +16,17 @@ const requestHandler = createRequestHandler(
 
 export default {
   async fetch(request, env, ctx) {
-    return requestHandler(request, {
+    const response = await requestHandler(request, {
       cloudflare: { env, ctx },
+    });
+
+    const headers = new Headers(response.headers);
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
     });
   },
 } satisfies ExportedHandler<Env>;

@@ -19,9 +19,10 @@ import type { Settings as SettingsType } from "#/types/settings"
 type AppSidebarProps = {
   forms: Form[]
   user: User
+  spamCount?: number
 } & React.ComponentProps<typeof Sidebar>
 
-export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
+export function AppSidebar({ forms, user, spamCount = 0, ...props }: AppSidebarProps) {
   const fetcher = useFetcher()
   const settingsFetcher = useFetcher()
 
@@ -51,7 +52,7 @@ export function AppSidebar({ forms, user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarContent>
-        <FormNav forms={forms} />
+        <FormNav forms={forms} spamCount={spamCount} />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu className="grid grid-cols-2 gap-2 group-data-[collapsible=icon]:grid-cols-1">

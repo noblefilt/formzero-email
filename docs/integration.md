@@ -10,6 +10,20 @@ server-side form submissions.
 - `_gotcha` remains the built-in honeypot field name.
 - `_redirect` remains the built-in post-submit redirect field name.
 
+## Spam quarantine
+
+If `_gotcha` is present and non-empty, the submission is still accepted and
+stored, but it is marked as Spam.
+
+Spam submissions:
+
+- appear only in `/forms/spam`
+- are excluded from the normal dashboard and per-form submission inbox
+- do not send notification emails
+- do not emit webhooks
+- still return the same success response or redirect as a normal accepted
+  submission
+
 ## Allowed origins
 
 Each form can optionally define an **allowed origins** list.
@@ -20,7 +34,7 @@ Each form can optionally define an **allowed origins** list.
 - Browser requests with an `Origin` header are checked against this list.
 - Direct server requests without an `Origin` header are not blocked by this list.
 - Existing browser-based forms do not need a server token. If the page domain
-  matches the allowlist, submissions continue to be accepted and email
+  matches the allowlist, non-spam submissions continue to be accepted and email
   notifications continue to fire.
 
 When an allowlist exists:
@@ -89,7 +103,7 @@ Each form can optionally define:
 - `webhook_url`
 - `webhook_secret`
 
-When both are configured, every successful submission emits one
+When both are configured, every non-spam successful submission emits one
 `submission.created` webhook.
 
 Outgoing headers:

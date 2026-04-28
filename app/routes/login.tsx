@@ -15,7 +15,10 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB;
-  const auth = getAuth({ database });
+  const auth = getAuth({
+      database,
+      baseURL: new URL(request.url).origin,
+  });
 
   // Redirect to app if already logged in
   const session = await auth.api.getSession({

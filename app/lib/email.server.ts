@@ -1,6 +1,20 @@
 import nodemailer from "nodemailer"
 import type { EmailConfig } from "#/types/settings"
 import type { SubmissionEmailData } from "#/types/submission"
+import {
+  getSubmissionEmail,
+  getSubmissionMessage,
+  getSubmissionName,
+} from "#/lib/submission-spam"
+
+type SubmissionNotificationMessage = {
+  from: string
+  to: string
+  replyTo?: string
+  subject: string
+  text: string
+  html: string
+}
 
 /**
  * Sends a test email to verify SMTP settings
@@ -116,115 +130,10 @@ export async function sendSubmissionNotification(
       },
     })
 
-    // Format the submission data for email display
-    const submissionHtml = formatSubmissionData(submission.data)
-    const submissionText = formatSubmissionDataText(submission.data)
-
-    // Format timestamp
-    const timestamp = new Date(submission.createdAt).toLocaleString('zh-CN', {
-      dateStyle: 'full',
-      timeStyle: 'long',
-    })
+    const message = buildSubmissionNotificationMessage(config, submission)
 
     // Send email
-    await transporter.sendMail({
-      from: config.notification_email,
-      to: config.notification_email,
-      subject: `「${submission.formName}」收到新提交`,
-      text: `
-FormZero - 新表单提交
-
-您的表单「${submission.formName}」收到了一条新提交。
-
-提交详情
-==================
-表单：${submission.formName}
-提交 ID：${submission.id}
-接收时间：${timestamp}
-
-提交数据
-==============
-${submissionText}
-
----
-此邮件由 FormZero 自动发送
-      `.trim(),
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>新表单提交</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #252525; padding: 32px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">
-              <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
-                新表单提交
-              </h1>
-              <p style="margin: 8px 0 0 0; color: #b4b4b4; font-size: 16px;">
-                ${submission.formName}
-              </p>
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px;">
-
-              <!-- Introduction -->
-              <p style="margin: 0 0 24px 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                您的表单 <strong>${submission.formName}</strong> 收到了一条新提交。
-              </p>
-
-              <!-- Metadata -->
-              <div style="background-color: #fafafa; border-left: 4px solid #252525; padding: 16px; margin-bottom: 32px; border-radius: 6px;">
-                <table width="100%" cellpadding="4" cellspacing="0">
-                  <tr>
-                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">提交 ID：</td>
-                    <td style="color: #252525; font-size: 14px; font-family: 'Courier New', monospace; padding: 4px 0;">${submission.id}</td>
-                  </tr>
-                  <tr>
-                    <td style="color: #8e8e8e; font-size: 14px; font-weight: 500; padding: 4px 0;">接收时间：</td>
-                    <td style="color: #252525; font-size: 14px; padding: 4px 0;">${timestamp}</td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Submission Data -->
-              <h2 style="margin: 0 0 16px 0; color: #252525; font-size: 18px; font-weight: 600;">
-                提交数据
-              </h2>
-
-              ${submissionHtml}
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #ebebeb;">
-              <p style="margin: 0; color: #8e8e8e; font-size: 14px;">
-                由 <strong style="color: #595959;">FormZero</strong> 发送
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `.trim(),
-    })
+    await transporter.sendMail(message)
 
     return { success: true }
   } catch (error) {
@@ -236,6 +145,86 @@ ${submissionText}
     }
 
     return { success: false, error: errorMessage }
+  }
+}
+
+export function buildSubmissionNotificationMessage(
+  config: EmailConfig,
+  submission: SubmissionEmailData
+): SubmissionNotificationMessage {
+  const senderEmail = getSubmissionEmail(submission.data)
+  const senderName =
+    getSubmissionName(submission.data) || senderEmail || submission.formName
+  const primaryMessage = getSubmissionMessage(submission.data)
+  const fromName = senderName.replace(/["<>]/g, "").trim() || submission.formName
+  const extraText = formatSubmissionDataText(
+    Object.fromEntries(
+      Object.entries(submission.data).filter(([key]) => {
+        const normalized = key.trim().toLowerCase().replace(/\s+/g, "_")
+        return !["name", "full_name", "fullname", "your_name", "email", "e-mail", "mail", "message", "msg", "comments", "comment", "body"].includes(normalized)
+      })
+    )
+  )
+  const extraHtml = formatSubmissionData(
+    Object.fromEntries(
+      Object.entries(submission.data).filter(([key]) => {
+        const normalized = key.trim().toLowerCase().replace(/\s+/g, "_")
+        return !["name", "full_name", "fullname", "your_name", "email", "e-mail", "mail", "message", "msg", "comments", "comment", "body"].includes(normalized)
+      })
+    )
+  )
+
+  const textParts = [
+    senderName,
+    senderEmail,
+    primaryMessage,
+    extraText === "无提交数据" ? null : extraText,
+  ].filter(Boolean)
+
+  return {
+    from: `${fromName} <${config.notification_email}>`,
+    to: config.notification_email,
+    replyTo: senderEmail || undefined,
+    subject: `来自 ${senderName} 的消息`,
+    text: textParts.join("\n\n"),
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New message</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f7f7f7;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7f7f7; padding: 24px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 640px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5e5;">
+          <tr>
+            <td style="padding: 28px;">
+              <p style="margin: 0 0 4px 0; color: #111111; font-size: 16px; font-weight: 700;">
+                ${escapeHtml(senderName)}
+              </p>
+              ${senderEmail ? `<p style="margin: 0 0 24px 0; color: #666666; font-size: 14px;">${escapeHtml(senderEmail)}</p>` : ""}
+              <p style="margin: 0 0 24px 0; color: #222222; font-size: 16px; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(primaryMessage || "No message provided.")}</p>
+              ${extraText === "无提交数据" ? "" : `
+              <div style="border-top: 1px solid #eeeeee; padding-top: 20px;">
+                ${extraHtml}
+              </div>
+              `}
+              <p style="margin: 24px 0 0 0; color: #777777; font-size: 13px; line-height: 1.6;">
+                Reply to this email to respond directly.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim(),
   }
 }
 

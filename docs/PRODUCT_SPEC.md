@@ -1,25 +1,174 @@
-你是一个Astro网站开发专家。为 TSPayy（tspayy.com）的 Cloudflare Pages 静态站
-创建一个 的"支付方法匹配器"交互组件。
+# Product Spec
 
-用户画像分三类：
-- 自由职业者（需要收美元）
-- 电商店主（需要接入支付网关）
-- 普通用户（想了解本地钱包）
+## Product Direction
 
-实现一个 3 步问卷流程：
-1. 你是哪类用户？（单选卡片）
-2. 你在哪个国家？（9 个 LATAM 国家下拉）
-3. 你最在意什么？（手续费 / 到账速度 / 注册门槛 — 单选）
+FormZero is being narrowed into a personal-use, professional email template
+editor backed by the existing Cloudflare Workers and D1 application shell.
 
-根据答案显示 Top 3 推荐结果，每个结果包含：方法名称、核心优势（1句话）、手续费范围、
-直接跳转至对应详情页的 CTA 按钮。
+The benchmark is commercial-grade reliability for one operator, not team
+collaboration. The product should feel trustworthy enough for daily email
+template work: fast editing, predictable preview, deterministic export, clear
+recovery, and safe persistence.
 
-要求：
-- 零依赖纯静态，不调用任何 API
-- 移动端优先，375px 完美适配
-- 使用 CSS 变量
-- 组件可以作为独立的 widget 嵌入任意页面
-- 状态保存在 JS 变量中（不用 localStorage，Cloudflare 静态环境限制）
+## Primary User
 
+The primary user is a single site operator who needs to create, edit, preview,
+version, and export reusable email templates without managing a separate email
+design tool.
 
-完整了解了你的网站　和 Harness Engineering 的核心理念。设计一套专门针对整站全面升级方案。
+The product may still support the original form-submission workflow where it is
+already implemented, but new architecture should optimize for the email editor
+surface first.
+
+## Core Jobs
+
+1. Create a new email template from a blank or starter template.
+2. Edit subject, preview text, and ordered content blocks with immediate
+   feedback.
+3. Preview the same document shape that export will render.
+4. Export deterministic HTML suitable for email delivery.
+5. Autosave edits without relying on a manual save loop.
+6. Save and restore named versions of a template.
+7. Recover from failed persistence or export without data loss.
+8. Delete templates intentionally, with confirmation or recovery.
+
+## Product Scope
+
+### In Scope
+
+- A versioned email document schema.
+- Typed reusable email blocks.
+- Editor commands for every mutation.
+- Undo and redo with at least 50 history steps.
+- Autosave with visible `idle`, `saving`, `saved`, and `error` states.
+- Retry or cancel controls for realistic async failure paths.
+- Template persistence in D1.
+- Starter templates and blank-template creation.
+- Version snapshots, restore, and deletion.
+- Multi-mode preview for desktop, mobile, and dark mode.
+- Deterministic HTML export isolated from the React UI.
+- Route-level resilience for public utility URLs and unknown requests.
+- Private-tool crawler policy: the app must advertise `noindex`, block all
+  robots, and avoid publishing a sitemap.
+- Existing form submissions may be quarantined as Spam when the built-in
+  honeypot is filled.
+
+### Out Of Scope
+
+- Multitenancy.
+- RBAC.
+- Approval workflows.
+- Team comments.
+- Billing.
+- Public template marketplace features.
+- Speculative backend operations that do not have complete UI feedback states.
+
+## Information Architecture
+
+### Public And Utility Routes
+
+- `/login` signs an existing operator into the workspace.
+- `/signup` creates the first and only local operator account.
+- `/success` and `/error` support form-submission redirects.
+- `/robots.txt` blocks all crawlers.
+- `/sitemap.xml` is intentionally disabled for this private tool.
+- Unknown URLs must return an intentional 404 response instead of surfacing as
+  unmatched-route runtime errors.
+
+### Authenticated Workspace Routes
+
+- `/forms/dashboard` keeps the existing submission overview available.
+- `/forms/spam` shows automatically quarantined spam submissions with only
+  time, email, message, and source domain.
+- `/forms/:formId/submissions` keeps existing submission inspection available.
+- `/forms/:formId/integration` keeps existing form integration setup available.
+- `/editor` is the email template editor and must be reachable from the
+  authenticated workspace navigation.
+- `/settings/notifications` controls notification settings.
+
+## Editor Contract
+
+The editor must be modeled around a versioned document, not scattered component
+state. Components may display and collect input, but they must not own document
+mutation rules.
+
+Every mutation should flow through explicit commands or transactions so history,
+autosave, validation, preview, and export observe the same state transition.
+
+Required behaviors:
+
+- Selection feedback is immediate.
+- Block insertion and drag movement show visible placement feedback.
+- Validation is live and visible before export.
+- Export is disabled when blocking validation issues exist.
+- Autosave failures preserve unsaved edits and expose retry.
+- Version restore creates a new recoverable snapshot instead of overwriting
+  history silently.
+
+## Export Contract
+
+Export is a product trust boundary. The preview and exported HTML must be based
+on the same normalized document input.
+
+Required behaviors:
+
+- HTML generation is deterministic for the same document.
+- Export logic is testable without rendering the app.
+- Export failures surface human-readable recovery guidance in the UI.
+- Partial export failures must not be hidden behind console output.
+
+## Persistence Contract
+
+D1 persistence must be explicit and recoverable.
+
+Required behaviors:
+
+- The editor can enter a local fallback mode when editor tables are missing.
+- The UI must clearly label local-only fallback mode.
+- Server persistence failures must keep the current draft in memory.
+- Retrying persistence must reuse the latest unsaved document.
+- Deleted templates must not be listed as active templates.
+
+## UX Standard
+
+All editor-facing work must comply with `docs/UX_STANDARDS.md`.
+
+The most important rules are:
+
+- Every user action exposes immediate feedback.
+- Validation appears during input.
+- Empty states include guidance and a next action.
+- Async operations expose retry or cancel where delay or failure is realistic.
+- No destructive action ships without confirmation or recovery.
+- Blank pages are defects.
+
+## Engineering Standard
+
+Implementation should remain simple and modular.
+
+Preferred architecture:
+
+- `src/editor/` owns editor state, command dispatch, history, autosave, and
+  validation.
+- `src/blocks/` owns block schemas, defaults, validation, preview behavior, and
+  export behavior.
+- `src/export/` owns deterministic HTML rendering and download behavior.
+- `src/templates/` owns template records, starter templates, and version data.
+- `src/preview/` owns visual preview surfaces.
+- `src/ui/` owns shared primitives and feedback patterns.
+
+When code and this spec diverge, the same change must either update the spec or
+stop and resolve the conflict.
+
+## Release Gates
+
+A release-quality change must pass:
+
+1. `npm run test:routes`
+2. `npm run lint:ux`
+3. `npm run typecheck`
+4. `npm run test:ux`
+5. `npm run build`
+
+If one of these cannot be run in the local environment, the reason must be
+reported with the closest completed verification.

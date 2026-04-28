@@ -31,7 +31,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   // Fetch all submissions for this form
   const submissions = await database
     .prepare(
-      "SELECT id, form_id, data, created_at, is_read, is_starred, is_archived FROM submissions WHERE form_id = ? ORDER BY created_at DESC"
+      "SELECT id, form_id, data, created_at, is_read, is_starred, is_archived FROM submissions WHERE form_id = ? AND COALESCE(is_spam, 0) = 0 ORDER BY created_at DESC"
     )
     .bind(formId)
     .all()

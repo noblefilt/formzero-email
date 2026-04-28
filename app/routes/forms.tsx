@@ -17,8 +17,8 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const result = await database
     .prepare(
       `SELECT f.id, f.name,
-              COUNT(s.id) as submission_count,
-              SUM(CASE WHEN s.is_read = 0 AND s.is_archived = 0 THEN 1 ELSE 0 END) as unread_count
+              SUM(CASE WHEN s.id IS NOT NULL AND COALESCE(s.is_spam, 0) = 0 THEN 1 ELSE 0 END) as submission_count,
+              SUM(CASE WHEN s.id IS NOT NULL AND COALESCE(s.is_spam, 0) = 0 AND s.is_read = 0 AND s.is_archived = 0 THEN 1 ELSE 0 END) as unread_count
        FROM forms f
        LEFT JOIN submissions s ON f.id = s.form_id
        GROUP BY f.id, f.name
@@ -27,6 +27,10 @@ export async function loader({ context, request }: Route.LoaderArgs) {
     .all()
 
   const forms = result.results as (Form & { submission_count: number; unread_count: number })[]
+  const spamResult = await database
+    .prepare("SELECT COUNT(*) AS count FROM submissions WHERE COALESCE(is_spam, 0) = 1")
+    .first<{ count: number }>()
+  const spamCount = spamResult?.count ?? 0
 
   // If no forms exist, redirect to create first form
   if (forms.length === 0) {
@@ -40,7 +44,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
     return redirect("/forms/dashboard")
   }
 
-  return { forms, user }
+  return { forms, user, spamCount }
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -125,11 +129,11 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function Forms() {
-  const { forms, user } = useLoaderData<typeof loader>()
+  const { forms, user, spamCount } = useLoaderData<typeof loader>()
 
   return (
     <SidebarProvider>
-      <AppSidebar forms={forms} user={user} />
+      <AppSidebar forms={forms} user={user} spamCount={spamCount} />
       <SidebarInset>
         <Outlet />
       </SidebarInset>

@@ -9,17 +9,23 @@ export default [
   route("setup", "routes/setup.tsx"),
   route("/forms", "routes/forms.tsx", [
     route("dashboard", "routes/forms.dashboard.tsx"),
+    route("spam", "routes/forms.spam.tsx"),
     route(":formId", "routes/forms.$formId.tsx", [
       route("submissions", "routes/forms.$formId.submissions.tsx"),
       route("integration", "routes/forms.$formId.integration.tsx"),
     ]),
   ]),
+  route("/editor", "routes/editor.tsx"),
   route("settings/notifications", "routes/settings.notifications.tsx"),
   route("settings/notifications/test", "routes/settings.notifications.test.tsx"),
+
+  route("/robots.txt", "routes/robots.txt.ts"),
+  route("/sitemap.xml", "routes/sitemap.xml.ts"),
 
   route("/api/auth/*", "routes/api.auth.$.tsx"),
   route("/api/forms/:formId/submissions", "routes/api.forms.$formId.submissions.tsx"),
 
   route("/success", "routes/success.tsx"),
   route("/error", "routes/error.tsx"),
+  route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

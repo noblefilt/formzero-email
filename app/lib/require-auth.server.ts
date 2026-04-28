@@ -6,7 +6,10 @@ import { getAuth } from "~/lib/auth.server"
  * Returns the authenticated user.
  */
 export async function requireAuth(request: Request, db: D1Database) {
-  const auth = getAuth({ database: db })
+  const auth = getAuth({
+    database: db,
+    baseURL: new URL(request.url).origin,
+  })
   const session = await auth.api.getSession({
     headers: request.headers
   })

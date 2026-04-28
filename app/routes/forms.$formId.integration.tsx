@@ -901,7 +901,7 @@ console.log(result.duplicate ? 'Existing submission reused:' : 'Submission store
               </code>{" "}
               unchanged when you use them. If your browser page runs on an
               allowed domain/origin, you do not need a server token to keep
-              receiving submissions and notification emails.
+              receiving non-spam submissions and notification emails.
             </p>
           </div>
           <Tabs defaultValue="html" className="w-full">
