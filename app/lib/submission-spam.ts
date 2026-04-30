@@ -10,6 +10,9 @@ const SOURCE_URL_KEYS = new Set([
   "referer",
   "source_url",
 ])
+export const SPAM_BURST_WINDOW_MS = 60 * 60 * 1000
+export const SPAM_BURST_EMAIL_LIMIT = 5
+export const SPAM_BURST_SOURCE_DOMAIN_LIMIT = 20
 
 function normalizeKey(key: string) {
   return key.trim().toLowerCase().replace(/\s+/g, "_")
@@ -99,4 +102,17 @@ export function getSubmissionSourceDomain(
   }
 
   return getSourceDomain(requestOrigin)
+}
+
+export function shouldSuppressSpamBurst({
+  emailCount,
+  sourceDomainCount,
+}: {
+  emailCount: number
+  sourceDomainCount: number
+}) {
+  return (
+    emailCount >= SPAM_BURST_EMAIL_LIMIT ||
+    sourceDomainCount >= SPAM_BURST_SOURCE_DOMAIN_LIMIT
+  )
 }

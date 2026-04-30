@@ -115,6 +115,14 @@ webhook side effects. The Spam page should stay intentionally small: time,
 email, message, source domain, and a one-click restore button that sets
 `is_spam = 0`.
 
+To protect the free Cloudflare/D1 runtime from bot floods, repeated spam bursts
+are suppressed before storage once enough evidence has already been captured:
+within a one-hour window, keep up to 5 spam samples from the same email address
+and up to 20 spam samples from the same source domain for each form. Suppressed
+spam still receives the same success response or redirect as accepted spam, but
+it does not write another database row and never triggers notification or
+webhook side effects.
+
 ## Engineering Standard
 
 Implementation should remain simple and modular.

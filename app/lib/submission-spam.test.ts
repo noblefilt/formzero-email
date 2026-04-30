@@ -7,6 +7,7 @@ import {
   getSubmissionEmail,
   getSubmissionMessage,
   getSubmissionSourceDomain,
+  shouldSuppressSpamBurst,
   isSpamSubmission,
 } from "./submission-spam"
 
@@ -58,5 +59,31 @@ test("spam source domain falls back to submitted page URL when Origin is missing
   assert.equal(
     getSubmissionSourceDomain({ source: "modal" }, null),
     "直接提交"
+  )
+})
+
+test("spam burst suppression limits repeated spam by mailbox or source domain", () => {
+  assert.equal(
+    shouldSuppressSpamBurst({
+      emailCount: 4,
+      sourceDomainCount: 19,
+    }),
+    false
+  )
+
+  assert.equal(
+    shouldSuppressSpamBurst({
+      emailCount: 5,
+      sourceDomainCount: 1,
+    }),
+    true
+  )
+
+  assert.equal(
+    shouldSuppressSpamBurst({
+      emailCount: 0,
+      sourceDomainCount: 20,
+    }),
+    true
   )
 })

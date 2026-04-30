@@ -28,6 +28,13 @@ Spam submissions:
 - still return the same success response or redirect as a normal accepted
   submission
 
+Repeated spam bursts are suppressed to protect Cloudflare and D1 resources. For
+each form, FormZero keeps representative spam samples for review, then quietly
+stops storing additional spam from the same email address after 5 samples in one
+hour, or from the same source domain after 20 samples in one hour. Suppressed
+spam still receives a success response or redirect, so bots do not get a useful
+retry signal.
+
 Notification emails and inbox display intentionally hide tracking metadata such
 as `source`, `page_url`, UTM fields, `_gotcha`, and `_redirect`. These values may
 still be stored for operational context, but they are not treated as user

@@ -53,3 +53,15 @@ test("spam page can restore quarantined submissions", () => {
   assert.match(spamRoute, /UPDATE submissions SET is_spam = 0/)
   assert.match(spamRoute, /还原/)
 })
+
+test("submission intake suppresses repeated spam before storage side effects", () => {
+  const intakeRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "api.forms.$formId.submissions.tsx"),
+    "utf8"
+  )
+
+  assert.match(intakeRoute, /shouldSuppressSpamBurst/)
+  assert.match(intakeRoute, /SPAM_BURST_WINDOW_MS/)
+  assert.match(intakeRoute, /suppressedSpam: true/)
+  assert.match(intakeRoute, /INSERT INTO submissions/)
+})

@@ -10,7 +10,14 @@ import {
 } from "~/lib/allowed-origins";
 import { deliverWebhook } from "~/lib/webhooks";
 import { extractBearerToken, verifyServerToken } from "~/lib/server-token";
-import { cleanSubmissionData, isSpamSubmission } from "~/lib/submission-spam";
+import {
+  cleanSubmissionData,
+  getSubmissionEmail,
+  getSubmissionSourceDomain,
+  isSpamSubmission,
+  shouldSuppressSpamBurst,
+  SPAM_BURST_WINDOW_MS,
+} from "~/lib/submission-spam";
 
 function isIdempotencyConflict(error: unknown) {
   return (
@@ -176,6 +183,15 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     }
 
     const isSpam = isSpamSubmission(submissionData)
+    const createdAt = Date.now();
+    const requestSource = requestOrigin
+      ? "browser"
+      : validServerToken
+        ? "server_token"
+        : "direct";
+    const normalizedRequestOrigin = requestOrigin
+      ? normalizeAllowedOrigin(requestOrigin)
+      : null
 
     // --- IP-based rate limiting ---
     const clientIP = request.headers.get("cf-connecting-ip")
@@ -190,6 +206,18 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       .first<{ cnt: number }>();
 
     if (recentSubmissions && recentSubmissions.cnt >= 5) {
+      if (isSpam) {
+        if (isJsonRequest) {
+          return data(
+            { success: true, suppressedSpam: true },
+            { status: 201, headers: corsHeaders }
+          )
+        }
+
+        const redirectParam = new URL(request.url).searchParams.get("redirect")
+        return redirect(redirectParam || "/success", 303)
+      }
+
       if (isJsonRequest) {
         return data(
           { success: false, error: "Too many requests. Please try again later." },
@@ -199,21 +227,66 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       return redirect("/error?error=rate_limited");
     }
 
-    // Generate submission ID and timestamp
-    const submissionId = crypto.randomUUID();
-    const createdAt = Date.now();
-    const requestSource = requestOrigin
-      ? "browser"
-      : validServerToken
-        ? "server_token"
-        : "direct";
-    const normalizedRequestOrigin = requestOrigin
-      ? normalizeAllowedOrigin(requestOrigin)
-      : null
-
     // Extract _redirect from submission data (hidden field) and remove from stored data
     const formRedirectUrl = submissionData._redirect as string | undefined;
     const cleanedData = cleanSubmissionData(submissionData);
+
+    if (isSpam) {
+      const spamBurstWindowStart = createdAt - SPAM_BURST_WINDOW_MS
+      const spamEmail = getSubmissionEmail(cleanedData)
+      const spamSourceDomain = getSubmissionSourceDomain(
+        cleanedData,
+        normalizedRequestOrigin
+      )
+      const recentSpamByEmail = spamEmail
+        ? await db
+          .prepare(
+            `SELECT COUNT(*) AS count
+             FROM submissions
+             WHERE form_id = ?
+               AND COALESCE(is_spam, 0) = 1
+               AND created_at > ?
+               AND lower(json_extract(data, '$.email')) = lower(?)`
+          )
+          .bind(formId, spamBurstWindowStart, spamEmail)
+          .first<{ count: number }>()
+        : { count: 0 }
+      const recentSpamBySourceDomain =
+        spamSourceDomain !== "直接提交"
+          ? await db
+            .prepare(
+              `SELECT COUNT(*) AS count
+               FROM submissions
+               WHERE form_id = ?
+                 AND COALESCE(is_spam, 0) = 1
+                 AND created_at > ?
+                 AND request_origin = ?`
+            )
+            .bind(formId, spamBurstWindowStart, normalizedRequestOrigin)
+            .first<{ count: number }>()
+          : { count: 0 }
+
+      if (
+        shouldSuppressSpamBurst({
+          emailCount: recentSpamByEmail?.count ?? 0,
+          sourceDomainCount: recentSpamBySourceDomain?.count ?? 0,
+        })
+      ) {
+        if (isJsonRequest) {
+          return data(
+            { success: true, suppressedSpam: true },
+            { status: 201, headers: corsHeaders }
+          )
+        }
+
+        const redirectParam = new URL(request.url).searchParams.get("redirect")
+        return redirect(redirectParam || formRedirectUrl || "/success", 303)
+      }
+    }
+
+    // Generate submission ID after suppression checks so dropped spam does not
+    // consume storage or trigger side effects.
+    const submissionId = crypto.randomUUID();
 
     // Store submission in database
     try {
