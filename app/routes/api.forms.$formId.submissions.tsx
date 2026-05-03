@@ -12,11 +12,7 @@ import { deliverWebhook } from "~/lib/webhooks";
 import { extractBearerToken, verifyServerToken } from "~/lib/server-token";
 import {
   cleanSubmissionData,
-  getSubmissionEmail,
-  getSubmissionSourceDomain,
   isSpamSubmission,
-  shouldSuppressSpamBurst,
-  SPAM_BURST_WINDOW_MS,
 } from "~/lib/submission-spam";
 
 function isIdempotencyConflict(error: unknown) {
@@ -136,6 +132,53 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       return redirect("/error?error=invalid_server_token")
     }
 
+    // Parse request body based on content type
+    let submissionData: Record<string, unknown>;
+
+    if (contentType.includes("application/json")) {
+      submissionData = await request.json();
+    } else if (
+      contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")
+    ) {
+      const formData = await request.formData();
+      submissionData = Object.fromEntries(formData);
+    } else {
+      if (isJsonRequest) {
+        return data(
+          { success: false, error: "Unsupported content type" },
+          { status: 415, headers: corsHeaders }
+        );
+      }
+      return redirect("/error?error=unsupported_content_type");
+    }
+
+    const isSpam = isSpamSubmission(submissionData)
+    // Extract _redirect from submission data (hidden field) before any storage work.
+    const formRedirectUrl = submissionData._redirect as string | undefined;
+
+    if (isSpam) {
+      if (isJsonRequest) {
+        return data(
+          { success: true, suppressedSpam: true },
+          { status: 201, headers: corsHeaders }
+        )
+      }
+
+      const redirectParam = new URL(request.url).searchParams.get("redirect")
+      return redirect(redirectParam || formRedirectUrl || "/success", 303)
+    }
+
+    const createdAt = Date.now();
+    const requestSource = requestOrigin
+      ? "browser"
+      : validServerToken
+        ? "server_token"
+        : "direct";
+    const normalizedRequestOrigin = requestOrigin
+      ? normalizeAllowedOrigin(requestOrigin)
+      : null
+
     if (idempotencyKey) {
       const existingSubmission = await db
         .prepare(
@@ -161,38 +204,6 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       }
     }
 
-    // Parse request body based on content type
-    let submissionData: Record<string, unknown>;
-
-    if (contentType.includes("application/json")) {
-      submissionData = await request.json();
-    } else if (
-      contentType.includes("application/x-www-form-urlencoded") ||
-      contentType.includes("multipart/form-data")
-    ) {
-      const formData = await request.formData();
-      submissionData = Object.fromEntries(formData);
-    } else {
-      if (isJsonRequest) {
-        return data(
-          { success: false, error: "Unsupported content type" },
-          { status: 415, headers: corsHeaders }
-        );
-      }
-      return redirect("/error?error=unsupported_content_type");
-    }
-
-    const isSpam = isSpamSubmission(submissionData)
-    const createdAt = Date.now();
-    const requestSource = requestOrigin
-      ? "browser"
-      : validServerToken
-        ? "server_token"
-        : "direct";
-    const normalizedRequestOrigin = requestOrigin
-      ? normalizeAllowedOrigin(requestOrigin)
-      : null
-
     // --- IP-based rate limiting ---
     const clientIP = request.headers.get("cf-connecting-ip")
       || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -206,18 +217,6 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       .first<{ cnt: number }>();
 
     if (recentSubmissions && recentSubmissions.cnt >= 5) {
-      if (isSpam) {
-        if (isJsonRequest) {
-          return data(
-            { success: true, suppressedSpam: true },
-            { status: 201, headers: corsHeaders }
-          )
-        }
-
-        const redirectParam = new URL(request.url).searchParams.get("redirect")
-        return redirect(redirectParam || "/success", 303)
-      }
-
       if (isJsonRequest) {
         return data(
           { success: false, error: "Too many requests. Please try again later." },
@@ -227,62 +226,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       return redirect("/error?error=rate_limited");
     }
 
-    // Extract _redirect from submission data (hidden field) and remove from stored data
-    const formRedirectUrl = submissionData._redirect as string | undefined;
+    // Remove control fields from stored data.
     const cleanedData = cleanSubmissionData(submissionData);
-
-    if (isSpam) {
-      const spamBurstWindowStart = createdAt - SPAM_BURST_WINDOW_MS
-      const spamEmail = getSubmissionEmail(cleanedData)
-      const spamSourceDomain = getSubmissionSourceDomain(
-        cleanedData,
-        normalizedRequestOrigin
-      )
-      const recentSpamByEmail = spamEmail
-        ? await db
-          .prepare(
-            `SELECT COUNT(*) AS count
-             FROM submissions
-             WHERE form_id = ?
-               AND COALESCE(is_spam, 0) = 1
-               AND created_at > ?
-               AND lower(json_extract(data, '$.email')) = lower(?)`
-          )
-          .bind(formId, spamBurstWindowStart, spamEmail)
-          .first<{ count: number }>()
-        : { count: 0 }
-      const recentSpamBySourceDomain =
-        spamSourceDomain !== "直接提交"
-          ? await db
-            .prepare(
-              `SELECT COUNT(*) AS count
-               FROM submissions
-               WHERE form_id = ?
-                 AND COALESCE(is_spam, 0) = 1
-                 AND created_at > ?
-                 AND request_origin = ?`
-            )
-            .bind(formId, spamBurstWindowStart, normalizedRequestOrigin)
-            .first<{ count: number }>()
-          : { count: 0 }
-
-      if (
-        shouldSuppressSpamBurst({
-          emailCount: recentSpamByEmail?.count ?? 0,
-          sourceDomainCount: recentSpamBySourceDomain?.count ?? 0,
-        })
-      ) {
-        if (isJsonRequest) {
-          return data(
-            { success: true, suppressedSpam: true },
-            { status: 201, headers: corsHeaders }
-          )
-        }
-
-        const redirectParam = new URL(request.url).searchParams.get("redirect")
-        return redirect(redirectParam || formRedirectUrl || "/success", 303)
-      }
-    }
 
     // Generate submission ID after suppression checks so dropped spam does not
     // consume storage or trigger side effects.
@@ -303,7 +248,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           idempotencyKey,
           normalizedRequestOrigin,
           requestSource,
-          isSpam ? 1 : 0
+          0
         )
         .run();
     } catch (error) {
@@ -335,100 +280,98 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       throw error
     }
 
-    if (!isSpam) {
-      // Send email notification asynchronously (don't await to avoid blocking response)
-      // This runs in the background after the response is sent
-      context.cloudflare.ctx.waitUntil(
-        (async () => {
-          try {
-            const backgroundTasks: Promise<unknown>[] = []
+    // Send email notification asynchronously (don't await to avoid blocking response)
+    // This runs in the background after the response is sent
+    context.cloudflare.ctx.waitUntil(
+      (async () => {
+        try {
+          const backgroundTasks: Promise<unknown>[] = []
 
-            // Check per-form email settings first, then fall back to global
-            let emailConfig: EmailConfig | null = null;
+          // Check per-form email settings first, then fall back to global
+          let emailConfig: EmailConfig | null = null;
+
+          if (
+            form.notification_email &&
+            form.notification_email_password &&
+            form.smtp_host &&
+            form.smtp_port
+          ) {
+            // Use per-form email settings
+            emailConfig = {
+              notification_email: form.notification_email,
+              notification_email_password: form.notification_email_password,
+              smtp_host: form.smtp_host,
+              smtp_port: form.smtp_port,
+            };
+          } else {
+            // Fall back to global settings
+            const globalSettings = await db
+              .prepare(
+                "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
+              )
+              .first<{
+                notification_email: string | null
+                notification_email_password: string | null
+                smtp_host: string | null
+                smtp_port: number | null
+              }>();
 
             if (
-              form.notification_email &&
-              form.notification_email_password &&
-              form.smtp_host &&
-              form.smtp_port
+              globalSettings?.notification_email &&
+              globalSettings?.notification_email_password &&
+              globalSettings?.smtp_host &&
+              globalSettings?.smtp_port
             ) {
-              // Use per-form email settings
               emailConfig = {
-                notification_email: form.notification_email,
-                notification_email_password: form.notification_email_password,
-                smtp_host: form.smtp_host,
-                smtp_port: form.smtp_port,
+                notification_email: globalSettings.notification_email,
+                notification_email_password: globalSettings.notification_email_password,
+                smtp_host: globalSettings.smtp_host,
+                smtp_port: globalSettings.smtp_port,
               };
-            } else {
-              // Fall back to global settings
-              const globalSettings = await db
-                .prepare(
-                  "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
-                )
-                .first<{
-                  notification_email: string | null
-                  notification_email_password: string | null
-                  smtp_host: string | null
-                  smtp_port: number | null
-                }>();
-
-              if (
-                globalSettings?.notification_email &&
-                globalSettings?.notification_email_password &&
-                globalSettings?.smtp_host &&
-                globalSettings?.smtp_port
-              ) {
-                emailConfig = {
-                  notification_email: globalSettings.notification_email,
-                  notification_email_password: globalSettings.notification_email_password,
-                  smtp_host: globalSettings.smtp_host,
-                  smtp_port: globalSettings.smtp_port,
-                };
-              }
             }
-
-            if (emailConfig) {
-              backgroundTasks.push(
-                sendSubmissionNotification(emailConfig, {
-                  id: submissionId,
-                  formId: formId,
-                  formName: form.name,
-                  data: cleanedData,
-                  createdAt: createdAt,
-                })
-              )
-            }
-
-            if (form.webhook_url && form.webhook_secret) {
-              backgroundTasks.push(
-                deliverWebhook({
-                  db,
-                  form: {
-                    id: form.id,
-                    name: form.name,
-                    webhook_url: form.webhook_url,
-                    webhook_secret: form.webhook_secret,
-                  },
-                  submission: {
-                    id: submissionId,
-                    createdAt,
-                    idempotencyKey,
-                    source: requestSource,
-                    origin: normalizedRequestOrigin,
-                    data: cleanedData,
-                  },
-                })
-              )
-            }
-
-            await Promise.allSettled(backgroundTasks)
-          } catch (error) {
-            // Log error but don't fail the request
-            console.error("Failed to run submission side effects:", error);
           }
-        })()
-      );
-    }
+
+          if (emailConfig) {
+            backgroundTasks.push(
+              sendSubmissionNotification(emailConfig, {
+                id: submissionId,
+                formId: formId,
+                formName: form.name,
+                data: cleanedData,
+                createdAt: createdAt,
+              })
+            )
+          }
+
+          if (form.webhook_url && form.webhook_secret) {
+            backgroundTasks.push(
+              deliverWebhook({
+                db,
+                form: {
+                  id: form.id,
+                  name: form.name,
+                  webhook_url: form.webhook_url,
+                  webhook_secret: form.webhook_secret,
+                },
+                submission: {
+                  id: submissionId,
+                  createdAt,
+                  idempotencyKey,
+                  source: requestSource,
+                  origin: normalizedRequestOrigin,
+                  data: cleanedData,
+                },
+              })
+            )
+          }
+
+          await Promise.allSettled(backgroundTasks)
+        } catch (error) {
+          // Log error but don't fail the request
+          console.error("Failed to run submission side effects:", error);
+        }
+      })()
+    );
 
     if (isJsonRequest) {
       // Return JSON response

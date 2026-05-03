@@ -37,6 +37,17 @@ submission intake, spam handling, and maintainable inbox workflows.
 
 ## Engineering Rules
 
+- Maintain this project as one developer, one mainline, and one local working
+  directory: use `main` as the long-lived branch and
+  `/Users/yc/Downloads/formzero-main` as the canonical local checkout.
+- Do not create long-lived feature branches, extra worktrees, or duplicate local
+  clones for normal development. If a temporary clone is needed to work around
+  `.git` permission problems or to perform a clean release push, keep it under
+  `/private/tmp`, push the verified result back to `main`, and remove the
+  temporary checkout before finishing.
+- Keep the canonical checkout clean after each task. Do not leave large batches
+  of unrelated uncommitted changes, generated output, dependency folders, or
+  stale release artifacts in local workspaces.
 - Keep changes minimal and directly tied to the requested workflow.
 - Do not add speculative features or abstractions.
 - Keep submission intake, notification rendering, spam detection, and inbox

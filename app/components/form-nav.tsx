@@ -27,24 +27,28 @@ export function FormNav({ forms, spamCount = 0 }: FormNavProps) {
       <SidebarGroup>
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/forms/dashboard"}>
+            <SidebarMenuItem className="flex items-center justify-between gap-2">
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === "/forms/dashboard"}
+                className="min-w-0 flex-1"
+              >
                 <NavLink to="/forms/dashboard">
                   <LayoutDashboard />
                   <span>仪表盘</span>
                 </NavLink>
               </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/forms/spam"}>
-                <NavLink to="/forms/spam">
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === "/forms/spam"}
+                className="h-8 w-auto! shrink-0 px-2"
+                title="垃圾邮件"
+              >
+                <NavLink to="/forms/spam" aria-label="垃圾邮件">
                   <ShieldAlert />
-                  <span>垃圾邮件</span>
+                  <span className="min-w-4 text-right tabular-nums">{spamCount}</span>
                 </NavLink>
               </SidebarMenuButton>
-              {spamCount > 0 ? (
-                <SidebarMenuBadge>{spamCount}</SidebarMenuBadge>
-              ) : null}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>

@@ -2,7 +2,7 @@ import type { Route } from "./+types/forms.spam"
 import { data, useFetcher } from "react-router"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
-import { RotateCcw, ShieldAlert } from "lucide-react"
+import { RotateCcw, ShieldAlert, Trash2 } from "lucide-react"
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "#/components/ui/empty"
 import { Button } from "#/components/ui/button"
@@ -77,6 +77,20 @@ export async function action({ request, context }: Route.ActionArgs) {
     return data({ success: true })
   }
 
+  if (intent === "delete_spam") {
+    const id = formData.get("id")
+    if (typeof id !== "string" || !id) {
+      return data({ error: "缺少提交 ID" }, { status: 400 })
+    }
+
+    await database
+      .prepare("DELETE FROM submissions WHERE id = ? AND COALESCE(is_spam, 0) = 1")
+      .bind(id)
+      .run()
+
+    return data({ success: true })
+  }
+
   return data({ error: "未知操作" }, { status: 400 })
 }
 
@@ -112,7 +126,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export default function SpamPage({ loaderData }: Route.ComponentProps) {
   const { submissions } = loaderData
   const restoreFetcher = useFetcher()
+  const deleteFetcher = useFetcher()
   const restoringId = restoreFetcher.formData?.get("id")?.toString()
+  const deletingId = deleteFetcher.formData?.get("id")?.toString()
 
   if (submissions.length === 0) {
     return (
@@ -124,7 +140,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
             </EmptyMedia>
             <EmptyTitle>暂无垃圾邮件</EmptyTitle>
             <EmptyDescription>
-              诱捕字段命中的提交会自动进入这里，不会触发邮件通知。
+              自动识别的垃圾提交会被静默丢弃；手动标记的垃圾邮件会显示在这里。
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -155,7 +171,7 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
         <div>
           <h2 className="text-lg font-semibold">垃圾邮件</h2>
           <p className="text-sm text-muted-foreground">
-            自动标记的垃圾邮件提交，只显示时间、邮箱、消息和来源域名。
+            手动标记或历史保留的垃圾邮件，只显示时间、邮箱、消息和来源域名。
           </p>
         </div>
 
@@ -175,6 +191,8 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                 const createdAt = new Date(submission.createdAt)
                 const isRestoring =
                   restoreFetcher.state !== "idle" && restoringId === submission.id
+                const isDeleting =
+                  deleteFetcher.state !== "idle" && deletingId === submission.id
 
                 return (
                   <TableRow key={submission.id}>
@@ -198,20 +216,43 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                       {submission.sourceDomain}
                     </TableCell>
                     <TableCell className="text-right">
-                      <restoreFetcher.Form method="post">
-                        <input type="hidden" name="intent" value="restore_spam" />
-                        <input type="hidden" name="id" value={submission.id} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          disabled={isRestoring}
-                          className="h-8 gap-1.5"
+                      <div className="flex justify-end gap-2">
+                        <restoreFetcher.Form method="post">
+                          <input type="hidden" name="intent" value="restore_spam" />
+                          <input type="hidden" name="id" value={submission.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            disabled={isRestoring || isDeleting}
+                            className="h-8 gap-1.5"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            {isRestoring ? "还原中..." : "还原"}
+                          </Button>
+                        </restoreFetcher.Form>
+                        <deleteFetcher.Form
+                          method="post"
+                          onSubmit={(event) => {
+                            if (!confirm("确定永久删除这条垃圾邮件吗？")) {
+                              event.preventDefault()
+                            }
+                          }}
                         >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          {isRestoring ? "还原中..." : "还原"}
-                        </Button>
-                      </restoreFetcher.Form>
+                          <input type="hidden" name="intent" value="delete_spam" />
+                          <input type="hidden" name="id" value={submission.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            disabled={isRestoring || isDeleting}
+                            className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {isDeleting ? "删除中..." : "删除"}
+                          </Button>
+                        </deleteFetcher.Form>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )

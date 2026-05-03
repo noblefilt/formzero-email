@@ -54,14 +54,27 @@ test("spam page can restore quarantined submissions", () => {
   assert.match(spamRoute, /还原/)
 })
 
-test("submission intake suppresses repeated spam before storage side effects", () => {
+test("spam page can permanently delete quarantined submissions", () => {
+  const spamRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.spam.tsx"),
+    "utf8"
+  )
+
+  assert.match(spamRoute, /intent === "delete_spam"/)
+  assert.match(spamRoute, /DELETE FROM submissions WHERE id = \?/)
+  assert.match(spamRoute, /删除/)
+  assert.match(spamRoute, /confirm\("确定永久删除这条垃圾邮件吗？"\)/)
+})
+
+test("submission intake suppresses detected spam before storage side effects", () => {
   const intakeRoute = readFileSync(
     join(process.cwd(), "app", "routes", "api.forms.$formId.submissions.tsx"),
     "utf8"
   )
 
-  assert.match(intakeRoute, /shouldSuppressSpamBurst/)
-  assert.match(intakeRoute, /SPAM_BURST_WINDOW_MS/)
+  assert.match(intakeRoute, /const isSpam = isSpamSubmission\(submissionData\)/)
+  assert.match(intakeRoute, /if \(isSpam\) {/)
   assert.match(intakeRoute, /suppressedSpam: true/)
   assert.match(intakeRoute, /INSERT INTO submissions/)
+  assert.doesNotMatch(intakeRoute, /COALESCE\(is_spam, 0\) = 1\s+AND created_at/)
 })

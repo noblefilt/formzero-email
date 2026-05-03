@@ -35,7 +35,7 @@ lead-form messages from multiple websites without running a public CRM.
 - Notification settings and test email.
 - Replyable submission notification emails.
 - Normal submissions inbox with read, star, archive, delete, and one-click manual spam actions.
-- Spam quarantine for honeypot submissions and manually marked spam.
+- Spam quarantine for manually marked spam and older stored spam rows.
 - Spam list showing time, email, message, and source domain.
 - Route-level resilience for utility URLs and unknown requests.
 - Private-tool crawler policy: `noindex`, blocked robots, and no published sitemap.
@@ -105,23 +105,20 @@ view.
 
 ## Spam Contract
 
-Spam can enter the quarantine in two ways:
+Spam can enter the system in two ways:
 
-- automatically when the built-in honeypot field is filled,
+- automatically when the built-in honeypot field is filled or the message is
+  obviously low-information random text,
 - manually when the operator marks a normal submission as spam.
 
-Spam submissions are accepted and stored, but they do not trigger email or
-webhook side effects. The Spam page should stay intentionally small: time,
-email, message, source domain, and a one-click restore button that sets
-`is_spam = 0`.
+Automatically detected spam submissions are accepted with the normal success
+response or redirect, but they are not written to D1 and do not trigger email or
+webhook side effects. Manual spam rows and older stored spam rows remain visible
+in the Spam page.
 
-To protect the free Cloudflare/D1 runtime from bot floods, repeated spam bursts
-are suppressed before storage once enough evidence has already been captured:
-within a one-hour window, keep up to 5 spam samples from the same email address
-and up to 20 spam samples from the same source domain for each form. Suppressed
-spam still receives the same success response or redirect as accepted spam, but
-it does not write another database row and never triggers notification or
-webhook side effects.
+The Spam page should stay intentionally small: time, email, message, source
+domain, a one-click restore button that sets `is_spam = 0`, and a confirmed
+delete action that permanently removes the spam row.
 
 ## Engineering Standard
 

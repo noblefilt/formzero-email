@@ -14,7 +14,7 @@
 		"lint:ux": "eslint eslint.config.mjs playwright.config.ts tests tools",
 		"postinstall": "npm run cf-typegen",
 		"preview": "npm run build && vite preview",
-		"test:unit": "tsx app/lib/submission-spam.test.ts && tsx app/lib/submission-display.test.ts && tsx app/lib/email.server.test.ts && tsx tests/crawl-policy.test.ts && tsx tests/submission-management-contract.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/submission-action.test.ts",
+		"test:unit": "tsx app/lib/submission-spam.test.ts && tsx app/lib/submission-display.test.ts && tsx app/lib/email.server.test.ts && tsx tests/crawl-policy.test.ts && tsx tests/form-navigation-contract.test.ts && tsx tests/submission-management-contract.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/submission-action.test.ts",
 		"test:routes": "tsx tests/route-contract.test.ts",
 		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b",
 		"better-auth-generate": "@better-auth/cli@latest generate --output migrations/change-this-name.sql --config better-auth/config.ts --y",

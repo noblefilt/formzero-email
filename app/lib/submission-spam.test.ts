@@ -7,7 +7,6 @@ import {
   getSubmissionEmail,
   getSubmissionMessage,
   getSubmissionSourceDomain,
-  shouldSuppressSpamBurst,
   isSpamSubmission,
 } from "./submission-spam"
 
@@ -15,6 +14,21 @@ test("honeypot values mark submissions as spam but empty honeypots do not", () =
   assert.equal(isSpamSubmission({ _gotcha: "bot-filled" }), true)
   assert.equal(isSpamSubmission({ _gotcha: "   " }), false)
   assert.equal(isSpamSubmission({ email: "reader@example.com" }), false)
+})
+
+test("low-information random messages are treated as spam", () => {
+  assert.equal(isSpamSubmission({ message: "1" }), true)
+  assert.equal(isSpamSubmission({ message: "efmvmu" }), true)
+  assert.equal(isSpamSubmission({ message: "5l5flz" }), true)
+  assert.equal(isSpamSubmission({ message: "idmxk7" }), true)
+  assert.equal(
+    isSpamSubmission({ message: "igxdidrvkudsivjwuyvifuvujoqefy" }),
+    true
+  )
+  assert.equal(
+    isSpamSubmission({ message: "I need help with my order." }),
+    false
+  )
 })
 
 test("cleanSubmissionData removes control fields before storage and email", () => {
@@ -59,31 +73,5 @@ test("spam source domain falls back to submitted page URL when Origin is missing
   assert.equal(
     getSubmissionSourceDomain({ source: "modal" }, null),
     "直接提交"
-  )
-})
-
-test("spam burst suppression limits repeated spam by mailbox or source domain", () => {
-  assert.equal(
-    shouldSuppressSpamBurst({
-      emailCount: 4,
-      sourceDomainCount: 19,
-    }),
-    false
-  )
-
-  assert.equal(
-    shouldSuppressSpamBurst({
-      emailCount: 5,
-      sourceDomainCount: 1,
-    }),
-    true
-  )
-
-  assert.equal(
-    shouldSuppressSpamBurst({
-      emailCount: 0,
-      sourceDomainCount: 20,
-    }),
-    true
   )
 })

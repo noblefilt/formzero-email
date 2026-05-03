@@ -10,9 +10,8 @@ const SOURCE_URL_KEYS = new Set([
   "referer",
   "source_url",
 ])
-export const SPAM_BURST_WINDOW_MS = 60 * 60 * 1000
-export const SPAM_BURST_EMAIL_LIMIT = 5
-export const SPAM_BURST_SOURCE_DOMAIN_LIMIT = 20
+const LOW_INFORMATION_MESSAGE_MAX_LENGTH = 32
+const SHORT_RANDOM_MESSAGE_MAX_LENGTH = 10
 
 function normalizeKey(key: string) {
   return key.trim().toLowerCase().replace(/\s+/g, "_")
@@ -55,10 +54,35 @@ export function isSpamSubmission(data: Record<string, unknown>) {
   const honeypotValue = data._gotcha
 
   if (typeof honeypotValue === "string") {
-    return honeypotValue.trim().length > 0
+    if (honeypotValue.trim().length > 0) return true
+  } else if (honeypotValue) {
+    return true
   }
 
-  return Boolean(honeypotValue)
+  const message = getSubmissionMessage(data)
+  if (!message) return false
+
+  const compactMessage = message.replace(/\s+/g, "")
+  if (!compactMessage) return false
+  if (compactMessage.length <= 1) return true
+
+  if (
+    compactMessage.length <= SHORT_RANDOM_MESSAGE_MAX_LENGTH &&
+    /^[a-z0-9]+$/i.test(compactMessage) &&
+    /\d/.test(compactMessage)
+  ) {
+    return true
+  }
+
+  if (
+    compactMessage.length <= LOW_INFORMATION_MESSAGE_MAX_LENGTH &&
+    /^[a-z]+$/i.test(compactMessage) &&
+    /[bcdfghjklmnpqrstvwxyz]{4,}/i.test(compactMessage)
+  ) {
+    return true
+  }
+
+  return false
 }
 
 export function cleanSubmissionData(data: Record<string, unknown>) {
@@ -102,17 +126,4 @@ export function getSubmissionSourceDomain(
   }
 
   return getSourceDomain(requestOrigin)
-}
-
-export function shouldSuppressSpamBurst({
-  emailCount,
-  sourceDomainCount,
-}: {
-  emailCount: number
-  sourceDomainCount: number
-}) {
-  return (
-    emailCount >= SPAM_BURST_EMAIL_LIMIT ||
-    sourceDomainCount >= SPAM_BURST_SOURCE_DOMAIN_LIMIT
-  )
 }

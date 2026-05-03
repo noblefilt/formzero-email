@@ -22,7 +22,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
        FROM forms f
        LEFT JOIN submissions s ON f.id = s.form_id
        GROUP BY f.id, f.name
-       ORDER BY f.created_at ASC`
+       ORDER BY unread_count DESC, f.created_at ASC`
     )
     .all()
 
