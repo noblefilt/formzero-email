@@ -45,6 +45,8 @@ type SpamSubmission = {
   sourceDomain: string
 }
 
+const DELETE_SPAM_CHUNK_SIZE = 50
+
 function getSpamEmailKey(email: string) {
   const trimmed = email.trim().toLowerCase()
   if (!trimmed || trimmed === "无邮箱") return null
@@ -73,6 +75,49 @@ function dedupeSpamSubmissionsByEmail(submissions: SpamSubmission[]) {
   }
 
   return { submissions: dedupedSubmissions, duplicateSubmissionIds }
+}
+
+async function loadSpamSubmissions(database: D1Database) {
+  const result = await database
+    .prepare(
+      `SELECT id, data, created_at, request_origin
+       FROM submissions
+       WHERE COALESCE(is_spam, 0) = 1
+       ORDER BY created_at DESC
+       LIMIT 500`
+    )
+    .all<SpamSubmissionRow>()
+
+  return result.results.map((row) => {
+    const parsedData = JSON.parse(row.data) as Record<string, unknown>
+
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      email: getSubmissionEmail(parsedData) || "无邮箱",
+      message: getSubmissionMessage(parsedData) || "无消息",
+      sourceDomain: getSubmissionSourceDomain(parsedData, row.request_origin),
+    }
+  })
+}
+
+export async function deleteSpamRowsByIds(database: D1Database, ids: string[]) {
+  const uniqueIds = Array.from(new Set(ids)).filter(Boolean)
+  let deleted = 0
+
+  for (let index = 0; index < uniqueIds.length; index += DELETE_SPAM_CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(index, index + DELETE_SPAM_CHUNK_SIZE)
+    const placeholders = chunk.map(() => "?").join(", ")
+    await database
+      .prepare(
+        `DELETE FROM submissions WHERE id IN (${placeholders}) AND COALESCE(is_spam, 0) = 1`
+      )
+      .bind(...chunk)
+      .run()
+    deleted += chunk.length
+  }
+
+  return deleted
 }
 
 export const meta: Route.MetaFunction = () => [
@@ -122,7 +167,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     return data({ success: true })
   }
 
-  if (intent === "delete_spam_bulk" || intent === "delete_duplicate_spam") {
+  if (intent === "delete_spam_bulk") {
     const ids = formData
       .getAll("ids")
       .filter((id): id is string => typeof id === "string" && id.length > 0)
@@ -131,15 +176,23 @@ export async function action({ request, context }: Route.ActionArgs) {
       return data({ error: "未选择垃圾邮件" }, { status: 400 })
     }
 
-    const placeholders = ids.map(() => "?").join(", ")
-    await database
-      .prepare(
-        `DELETE FROM submissions WHERE id IN (${placeholders}) AND COALESCE(is_spam, 0) = 1`
-      )
-      .bind(...ids)
-      .run()
+    const deleted = await deleteSpamRowsByIds(database, ids)
 
-    return data({ success: true, deleted: ids.length })
+    return data({ success: true, deleted })
+  }
+
+  if (intent === "delete_duplicate_spam") {
+    const { duplicateSubmissionIds } = dedupeSpamSubmissionsByEmail(
+      await loadSpamSubmissions(database)
+    )
+
+    if (duplicateSubmissionIds.length === 0) {
+      return data({ success: true, deleted: 0 })
+    }
+
+    const deleted = await deleteSpamRowsByIds(database, duplicateSubmissionIds)
+
+    return data({ success: true, deleted })
   }
 
   return data({ error: "未知操作" }, { status: 400 })
@@ -149,29 +202,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const database = context.cloudflare.env.DB
   await requireAuth(request, database, context.cloudflare.env)
 
-  const result = await database
-    .prepare(
-      `SELECT id, data, created_at, request_origin
-       FROM submissions
-       WHERE COALESCE(is_spam, 0) = 1
-       ORDER BY created_at DESC
-       LIMIT 500`
-    )
-    .all<SpamSubmissionRow>()
-
-  const submissions: SpamSubmission[] = result.results.map((row) => {
-    const parsedData = JSON.parse(row.data) as Record<string, unknown>
-
-    return {
-      id: row.id,
-      createdAt: row.created_at,
-      email: getSubmissionEmail(parsedData) || "无邮箱",
-      message: getSubmissionMessage(parsedData) || "无消息",
-      sourceDomain: getSubmissionSourceDomain(parsedData, row.request_origin),
-    }
-  })
-
-  return dedupeSpamSubmissionsByEmail(submissions)
+  return dedupeSpamSubmissionsByEmail(await loadSpamSubmissions(database))
 }
 
 export default function SpamPage({ loaderData }: Route.ComponentProps) {
@@ -265,9 +296,6 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                 }}
               >
                 <input type="hidden" name="intent" value="delete_duplicate_spam" />
-                {duplicateSubmissionIds.map((id) => (
-                  <input key={id} type="hidden" name="ids" value={id} />
-                ))}
                 <Button
                   type="submit"
                   variant="outline"

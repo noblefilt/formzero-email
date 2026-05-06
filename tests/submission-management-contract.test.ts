@@ -77,6 +77,8 @@ test("spam page supports bulk selection and bulk delete", () => {
   assert.match(spamRoute, /type="checkbox"/)
   assert.match(spamRoute, /intent" value="delete_spam_bulk"/)
   assert.match(spamRoute, /DELETE FROM submissions WHERE id IN/)
+  assert.match(spamRoute, /DELETE_SPAM_CHUNK_SIZE/)
+  assert.match(spamRoute, /deleteSpamRowsByIds/)
   assert.match(spamRoute, /批量删除/)
 })
 
@@ -89,6 +91,9 @@ test("spam page keeps one row per repeated spam mailbox by default", () => {
   assert.match(spamRoute, /dedupeSpamSubmissionsByEmail/)
   assert.match(spamRoute, /duplicateSubmissionIds/)
   assert.match(spamRoute, /intent" value="delete_duplicate_spam"/)
+  assert.match(spamRoute, /loadSpamSubmissions/)
+  assert.match(spamRoute, /deleteSpamRowsByIds\(database, duplicateSubmissionIds\)/)
+  assert.doesNotMatch(spamRoute, /duplicateSubmissionIds\.map\(\(id\) => \(\s*<input/)
   assert.match(spamRoute, /清理重复邮箱/)
 })
 
