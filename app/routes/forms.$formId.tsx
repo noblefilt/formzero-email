@@ -1,6 +1,6 @@
 import type { Route } from "./+types/forms.$formId"
 import * as React from "react"
-import { Database, Plus, Puzzle } from "lucide-react"
+import { Database, Plus, Puzzle, Trash2 } from "lucide-react"
 import {
   Link,
   Outlet,
@@ -70,8 +70,10 @@ export default function FormLayout() {
   const params = useParams()
   const loaderData = useLoaderData<typeof loader>()
   const fetcher = useFetcher<{ error?: string }>()
+  const deleteFetcher = useFetcher()
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
 
   const location = useLocation()
 
@@ -144,6 +146,14 @@ export default function FormLayout() {
               <Plus />
               新建表单
             </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 />
+              删除表单
+            </Button>
           </div>
         </div>
       </header>
@@ -173,6 +183,37 @@ export default function FormLayout() {
               </Button>
             </DialogFooter>
           </fetcher.Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除表单</DialogTitle>
+            <DialogDescription>
+              确定要删除“{loaderData.form.name}”吗？该表单下的所有提交数据也会被永久删除，此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <deleteFetcher.Form method="post" action="/forms">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="formId" value={loaderData.form.id} />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={deleteFetcher.state === "submitting"}
+              >
+                {deleteFetcher.state === "submitting" ? "删除中..." : "确认删除"}
+              </Button>
+            </DialogFooter>
+          </deleteFetcher.Form>
         </DialogContent>
       </Dialog>
 

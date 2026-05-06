@@ -71,6 +71,8 @@ lead-form messages from multiple websites without running a public CRM.
 - `/forms/:formId/submissions` shows the normal inbox for a form and supports
   read, star, archive, delete, and manual spam marking.
 - `/forms/:formId/integration` keeps form integration setup available.
+- Current form pages expose a confirmed delete action for retiring forms that
+  are no longer in use.
 - `/settings/notifications` controls notification settings.
 
 ## Notification Contract
@@ -117,8 +119,11 @@ webhook side effects. Manual spam rows and older stored spam rows remain visible
 in the Spam page.
 
 The Spam page should stay intentionally small: time, email, message, source
-domain, a one-click restore button that sets `is_spam = 0`, and a confirmed
-delete action that permanently removes the spam row.
+domain, a one-click restore button that sets `is_spam = 0`, checkbox selection
+with confirmed bulk delete, and a confirmed delete action that permanently
+removes spam rows. Repeated spam rows from the same email are collapsed by
+default so one latest row remains visible as the filter reference, with a
+confirmed cleanup action for deleting the hidden duplicate rows.
 
 ## Engineering Standard
 

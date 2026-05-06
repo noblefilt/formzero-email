@@ -10,6 +10,10 @@ const formNav = readFileSync(
   join(process.cwd(), "app", "components", "form-nav.tsx"),
   "utf8"
 )
+const formLayout = readFileSync(
+  join(process.cwd(), "app", "routes", "forms.$formId.tsx"),
+  "utf8"
+)
 
 assert.match(
   formsRoute,
@@ -39,4 +43,22 @@ assert.match(
   formNav,
   /<span className="min-w-4 text-right tabular-nums">\{spamCount\}<\/span>/,
   "spam summary should always show the numeric spam count"
+)
+
+assert.match(
+  formLayout,
+  /删除表单/,
+  "current form layout should expose a visible delete form action"
+)
+
+assert.match(
+  formLayout,
+  /此操作不可撤销/,
+  "delete form action should confirm permanent data loss"
+)
+
+assert.match(
+  formLayout,
+  /name="intent" value="delete"/,
+  "delete form dialog should submit the existing delete intent"
 )

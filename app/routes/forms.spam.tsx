@@ -1,4 +1,5 @@
 import type { Route } from "./+types/forms.spam"
+import * as React from "react"
 import { data, useFetcher } from "react-router"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
@@ -42,6 +43,36 @@ type SpamSubmission = {
   email: string
   message: string
   sourceDomain: string
+}
+
+function getSpamEmailKey(email: string) {
+  const trimmed = email.trim().toLowerCase()
+  if (!trimmed || trimmed === "无邮箱") return null
+  return trimmed
+}
+
+function dedupeSpamSubmissionsByEmail(submissions: SpamSubmission[]) {
+  const seenEmails = new Set<string>()
+  const duplicateSubmissionIds: string[] = []
+  const dedupedSubmissions: SpamSubmission[] = []
+
+  for (const submission of submissions) {
+    const emailKey = getSpamEmailKey(submission.email)
+    if (!emailKey) {
+      dedupedSubmissions.push(submission)
+      continue
+    }
+
+    if (seenEmails.has(emailKey)) {
+      duplicateSubmissionIds.push(submission.id)
+      continue
+    }
+
+    seenEmails.add(emailKey)
+    dedupedSubmissions.push(submission)
+  }
+
+  return { submissions: dedupedSubmissions, duplicateSubmissionIds }
 }
 
 export const meta: Route.MetaFunction = () => [
@@ -91,6 +122,26 @@ export async function action({ request, context }: Route.ActionArgs) {
     return data({ success: true })
   }
 
+  if (intent === "delete_spam_bulk" || intent === "delete_duplicate_spam") {
+    const ids = formData
+      .getAll("ids")
+      .filter((id): id is string => typeof id === "string" && id.length > 0)
+
+    if (ids.length === 0) {
+      return data({ error: "未选择垃圾邮件" }, { status: 400 })
+    }
+
+    const placeholders = ids.map(() => "?").join(", ")
+    await database
+      .prepare(
+        `DELETE FROM submissions WHERE id IN (${placeholders}) AND COALESCE(is_spam, 0) = 1`
+      )
+      .bind(...ids)
+      .run()
+
+    return data({ success: true, deleted: ids.length })
+  }
+
   return data({ error: "未知操作" }, { status: 400 })
 }
 
@@ -120,15 +171,34 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     }
   })
 
-  return { submissions }
+  return dedupeSpamSubmissionsByEmail(submissions)
 }
 
 export default function SpamPage({ loaderData }: Route.ComponentProps) {
-  const { submissions } = loaderData
+  const { submissions, duplicateSubmissionIds } = loaderData
   const restoreFetcher = useFetcher()
   const deleteFetcher = useFetcher()
+  const bulkDeleteFetcher = useFetcher()
+  const duplicateDeleteFetcher = useFetcher()
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const restoringId = restoreFetcher.formData?.get("id")?.toString()
   const deletingId = deleteFetcher.formData?.get("id")?.toString()
+  const allSelected =
+    submissions.length > 0 &&
+    submissions.every((submission) => selectedIds.includes(submission.id))
+  const someSelected = selectedIds.length > 0 && !allSelected
+
+  const toggleAllSelected = () => {
+    setSelectedIds(allSelected ? [] : submissions.map((submission) => submission.id))
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    )
+  }
 
   if (submissions.length === 0) {
     return (
@@ -175,10 +245,85 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {selectedIds.length > 0
+              ? `已选择 ${selectedIds.length} 条`
+              : `共 ${submissions.length} 条垃圾邮件`}
+            {duplicateSubmissionIds.length > 0
+              ? `，已隐藏 ${duplicateSubmissionIds.length} 条重复邮箱记录`
+              : ""}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {duplicateSubmissionIds.length > 0 && (
+              <duplicateDeleteFetcher.Form
+                method="post"
+                onSubmit={(event) => {
+                  if (!confirm(`确定删除 ${duplicateSubmissionIds.length} 条重复邮箱垃圾邮件吗？每个邮箱会保留最新一条。`)) {
+                    event.preventDefault()
+                  }
+                }}
+              >
+                <input type="hidden" name="intent" value="delete_duplicate_spam" />
+                {duplicateSubmissionIds.map((id) => (
+                  <input key={id} type="hidden" name="ids" value={id} />
+                ))}
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  disabled={duplicateDeleteFetcher.state !== "idle"}
+                  className="h-9 gap-1.5 text-xs"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {duplicateDeleteFetcher.state !== "idle" ? "清理中..." : "清理重复邮箱"}
+                </Button>
+              </duplicateDeleteFetcher.Form>
+            )}
+            {selectedIds.length > 0 && (
+              <bulkDeleteFetcher.Form
+                method="post"
+                onSubmit={(event) => {
+                  if (!confirm(`确定永久删除这 ${selectedIds.length} 条垃圾邮件吗？`)) {
+                    event.preventDefault()
+                  }
+                }}
+              >
+                <input type="hidden" name="intent" value="delete_spam_bulk" />
+                {selectedIds.map((id) => (
+                  <input key={id} type="hidden" name="ids" value={id} />
+                ))}
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulkDeleteFetcher.state !== "idle"}
+                  className="h-9 gap-1.5 text-xs"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {bulkDeleteFetcher.state !== "idle" ? "删除中..." : `批量删除 ${selectedIds.length}`}
+                </Button>
+              </bulkDeleteFetcher.Form>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10 px-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(element) => {
+                      if (element) element.indeterminate = someSelected
+                    }}
+                    onChange={toggleAllSelected}
+                    className="h-4 w-4 rounded border-gray-300"
+                    aria-label="全选垃圾邮件"
+                  />
+                </TableHead>
                 <TableHead>时间</TableHead>
                 <TableHead>邮箱</TableHead>
                 <TableHead>消息</TableHead>
@@ -193,9 +338,23 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
                   restoreFetcher.state !== "idle" && restoringId === submission.id
                 const isDeleting =
                   deleteFetcher.state !== "idle" && deletingId === submission.id
+                const isSelected = selectedIds.includes(submission.id)
 
                 return (
-                  <TableRow key={submission.id}>
+                  <TableRow
+                    key={submission.id}
+                    data-state={isSelected ? "selected" : undefined}
+                    className={isSelected ? "bg-muted/50" : undefined}
+                  >
+                    <TableCell className="w-10 px-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelected(submission.id)}
+                        className="h-4 w-4 rounded border-gray-300"
+                        aria-label={`选择 ${submission.email}`}
+                      />
+                    </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       <span title={formatExactTime(submission.createdAt)}>
                         {formatDistanceToNow(createdAt, {

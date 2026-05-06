@@ -66,6 +66,32 @@ test("spam page can permanently delete quarantined submissions", () => {
   assert.match(spamRoute, /confirm\("确定永久删除这条垃圾邮件吗？"\)/)
 })
 
+test("spam page supports bulk selection and bulk delete", () => {
+  const spamRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.spam.tsx"),
+    "utf8"
+  )
+
+  assert.match(spamRoute, /selectedIds/)
+  assert.match(spamRoute, /toggleAllSelected/)
+  assert.match(spamRoute, /type="checkbox"/)
+  assert.match(spamRoute, /intent" value="delete_spam_bulk"/)
+  assert.match(spamRoute, /DELETE FROM submissions WHERE id IN/)
+  assert.match(spamRoute, /批量删除/)
+})
+
+test("spam page keeps one row per repeated spam mailbox by default", () => {
+  const spamRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.spam.tsx"),
+    "utf8"
+  )
+
+  assert.match(spamRoute, /dedupeSpamSubmissionsByEmail/)
+  assert.match(spamRoute, /duplicateSubmissionIds/)
+  assert.match(spamRoute, /intent" value="delete_duplicate_spam"/)
+  assert.match(spamRoute, /清理重复邮箱/)
+})
+
 test("submission intake suppresses detected spam before storage side effects", () => {
   const intakeRoute = readFileSync(
     join(process.cwd(), "app", "routes", "api.forms.$formId.submissions.tsx"),
