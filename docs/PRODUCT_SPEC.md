@@ -123,7 +123,11 @@ domain, a one-click restore button that sets `is_spam = 0`, checkbox selection
 with confirmed bulk delete, and a confirmed delete action that permanently
 removes spam rows. Repeated spam rows from the same email are collapsed by
 default so one latest row remains visible as the filter reference, with a
-confirmed cleanup action for deleting the hidden duplicate rows.
+confirmed cleanup action for deleting the hidden duplicate rows across the full
+spam quarantine, not just the currently visible page. Historical malformed rows
+should remain visible with a safe fallback message so they can still be deleted.
+Cleanup failures should return an inline retry message instead of falling
+through to a generic route error page.
 
 ## Engineering Standard
 

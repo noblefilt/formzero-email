@@ -30,14 +30,14 @@ import {
 } from "#/lib/submission-spam"
 import { requireAuth } from "~/lib/require-auth.server"
 
-type SpamSubmissionRow = {
+export type SpamSubmissionRow = {
   id: string
   data: string
   created_at: number
   request_origin: string | null
 }
 
-type SpamSubmission = {
+export type SpamSubmission = {
   id: string
   createdAt: number
   email: string
@@ -46,6 +46,7 @@ type SpamSubmission = {
 }
 
 const DELETE_SPAM_CHUNK_SIZE = 50
+const SPAM_PAGE_SIZE = 500
 
 function getSpamEmailKey(email: string) {
   const trimmed = email.trim().toLowerCase()
@@ -77,28 +78,66 @@ function dedupeSpamSubmissionsByEmail(submissions: SpamSubmission[]) {
   return { submissions: dedupedSubmissions, duplicateSubmissionIds }
 }
 
-async function loadSpamSubmissions(database: D1Database) {
+export function parseSpamSubmissionRow(row: SpamSubmissionRow): SpamSubmission {
+  let parsedData: Record<string, unknown> = {}
+  let parseFailed = false
+
+  try {
+    const value = JSON.parse(row.data) as unknown
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      parsedData = value as Record<string, unknown>
+    } else {
+      parseFailed = true
+    }
+  } catch {
+    parseFailed = true
+  }
+
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    email: getSubmissionEmail(parsedData) || "无邮箱",
+    message:
+      getSubmissionMessage(parsedData) ||
+      (parseFailed ? "无法解析提交内容" : "无消息"),
+    sourceDomain: getSubmissionSourceDomain(parsedData, row.request_origin),
+  }
+}
+
+async function loadSpamSubmissions(
+  database: D1Database,
+  options: { limit?: number; offset?: number } = {}
+) {
+  const limit = options.limit ?? SPAM_PAGE_SIZE
+  const offset = options.offset ?? 0
   const result = await database
     .prepare(
       `SELECT id, data, created_at, request_origin
        FROM submissions
        WHERE COALESCE(is_spam, 0) = 1
        ORDER BY created_at DESC
-       LIMIT 500`
+       LIMIT ? OFFSET ?`
     )
+    .bind(limit, offset)
     .all<SpamSubmissionRow>()
 
-  return result.results.map((row) => {
-    const parsedData = JSON.parse(row.data) as Record<string, unknown>
+  return result.results.map(parseSpamSubmissionRow)
+}
 
-    return {
-      id: row.id,
-      createdAt: row.created_at,
-      email: getSubmissionEmail(parsedData) || "无邮箱",
-      message: getSubmissionMessage(parsedData) || "无消息",
-      sourceDomain: getSubmissionSourceDomain(parsedData, row.request_origin),
-    }
-  })
+async function loadAllSpamSubmissions(database: D1Database) {
+  const submissions: SpamSubmission[] = []
+
+  for (let offset = 0; ; offset += SPAM_PAGE_SIZE) {
+    const page = await loadSpamSubmissions(database, {
+      limit: SPAM_PAGE_SIZE,
+      offset,
+    })
+    submissions.push(...page)
+
+    if (page.length < SPAM_PAGE_SIZE) break
+  }
+
+  return submissions
 }
 
 export async function deleteSpamRowsByIds(database: D1Database, ids: string[]) {
@@ -118,6 +157,16 @@ export async function deleteSpamRowsByIds(database: D1Database, ids: string[]) {
   }
 
   return deleted
+}
+
+export async function deleteDuplicateSpamRows(database: D1Database) {
+  const { duplicateSubmissionIds } = dedupeSpamSubmissionsByEmail(
+    await loadAllSpamSubmissions(database)
+  )
+
+  if (duplicateSubmissionIds.length === 0) return 0
+
+  return deleteSpamRowsByIds(database, duplicateSubmissionIds)
 }
 
 export const meta: Route.MetaFunction = () => [
@@ -145,10 +194,15 @@ export async function action({ request, context }: Route.ActionArgs) {
       return data({ error: "缺少提交 ID" }, { status: 400 })
     }
 
-    await database
-      .prepare("UPDATE submissions SET is_spam = 0 WHERE id = ?")
-      .bind(id)
-      .run()
+    try {
+      await database
+        .prepare("UPDATE submissions SET is_spam = 0 WHERE id = ?")
+        .bind(id)
+        .run()
+    } catch (error) {
+      console.error("Failed to restore spam submission:", error)
+      return data({ error: "还原失败，请刷新后重试。" }, { status: 500 })
+    }
 
     return data({ success: true })
   }
@@ -159,10 +213,15 @@ export async function action({ request, context }: Route.ActionArgs) {
       return data({ error: "缺少提交 ID" }, { status: 400 })
     }
 
-    await database
-      .prepare("DELETE FROM submissions WHERE id = ? AND COALESCE(is_spam, 0) = 1")
-      .bind(id)
-      .run()
+    try {
+      await database
+        .prepare("DELETE FROM submissions WHERE id = ? AND COALESCE(is_spam, 0) = 1")
+        .bind(id)
+        .run()
+    } catch (error) {
+      console.error("Failed to delete spam submission:", error)
+      return data({ error: "删除失败，请刷新后重试。" }, { status: 500 })
+    }
 
     return data({ success: true })
   }
@@ -176,23 +235,25 @@ export async function action({ request, context }: Route.ActionArgs) {
       return data({ error: "未选择垃圾邮件" }, { status: 400 })
     }
 
-    const deleted = await deleteSpamRowsByIds(database, ids)
+    try {
+      const deleted = await deleteSpamRowsByIds(database, ids)
 
-    return data({ success: true, deleted })
+      return data({ success: true, deleted })
+    } catch (error) {
+      console.error("Failed to bulk delete spam submissions:", error)
+      return data({ error: "批量删除失败，请刷新后重试。" }, { status: 500 })
+    }
   }
 
   if (intent === "delete_duplicate_spam") {
-    const { duplicateSubmissionIds } = dedupeSpamSubmissionsByEmail(
-      await loadSpamSubmissions(database)
-    )
+    try {
+      const deleted = await deleteDuplicateSpamRows(database)
 
-    if (duplicateSubmissionIds.length === 0) {
-      return data({ success: true, deleted: 0 })
+      return data({ success: true, deleted })
+    } catch (error) {
+      console.error("Failed to delete duplicate spam submissions:", error)
+      return data({ error: "清理重复垃圾邮件失败，请刷新后重试。" }, { status: 500 })
     }
-
-    const deleted = await deleteSpamRowsByIds(database, duplicateSubmissionIds)
-
-    return data({ success: true, deleted })
   }
 
   return data({ error: "未知操作" }, { status: 400 })
@@ -214,6 +275,11 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const restoringId = restoreFetcher.formData?.get("id")?.toString()
   const deletingId = deleteFetcher.formData?.get("id")?.toString()
+  const actionError =
+    restoreFetcher.data?.error ||
+    deleteFetcher.data?.error ||
+    bulkDeleteFetcher.data?.error ||
+    duplicateDeleteFetcher.data?.error
   const allSelected =
     submissions.length > 0 &&
     submissions.every((submission) => selectedIds.includes(submission.id))
@@ -275,6 +341,12 @@ export default function SpamPage({ loaderData }: Route.ComponentProps) {
             手动标记或历史保留的垃圾邮件，只显示时间、邮箱、消息和来源域名。
           </p>
         </div>
+
+        {actionError && (
+          <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {actionError}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">

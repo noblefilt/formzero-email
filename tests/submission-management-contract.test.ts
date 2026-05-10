@@ -97,6 +97,19 @@ test("spam page keeps one row per repeated spam mailbox by default", () => {
   assert.match(spamRoute, /清理重复邮箱/)
 })
 
+test("spam page returns visible errors when cleanup actions fail", () => {
+  const spamRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.spam.tsx"),
+    "utf8"
+  )
+
+  assert.match(spamRoute, /try \{/)
+  assert.match(spamRoute, /Failed to delete duplicate spam submissions/)
+  assert.match(spamRoute, /清理重复垃圾邮件失败，请刷新后重试。/)
+  assert.match(spamRoute, /role="alert"/)
+  assert.match(spamRoute, /actionError/)
+})
+
 test("submission intake suppresses detected spam before storage side effects", () => {
   const intakeRoute = readFileSync(
     join(process.cwd(), "app", "routes", "api.forms.$formId.submissions.tsx"),
