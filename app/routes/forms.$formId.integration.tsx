@@ -1809,7 +1809,16 @@ function FormEmailSettings({
 
   useEffect(() => {
     setTestPassed(false)
-  }, [email, password, smtpHost, smtpPort])
+  }, [
+    email,
+    password,
+    smtpHost,
+    smtpPort,
+    publicSiteName,
+    fromName,
+    fromEmail,
+    notificationToEmail,
+  ])
 
   const isTesting = testFetcher.state === "submitting"
   const testSuccess = testFetcher.state === "idle" && testFetcher.data?.success
@@ -1843,6 +1852,10 @@ function FormEmailSettings({
     formData.append("notification_email_password", password)
     formData.append("smtp_host", smtpHost)
     formData.append("smtp_port", smtpPort)
+    formData.append("public_site_name", publicSiteName)
+    formData.append("from_name", fromName)
+    formData.append("from_email", fromEmail)
+    formData.append("notification_to_email", notificationToEmail)
     testFetcher.submit(formData, {
       method: "post",
       action: "/settings/notifications/test",

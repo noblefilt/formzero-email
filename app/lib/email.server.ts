@@ -38,6 +38,14 @@ function sanitizeHeaderText(value: string | null | undefined) {
   return cleaned || null
 }
 
+function formatAddress(name: string | null | undefined, email: string) {
+  const cleanedName = sanitizeHeaderText(name)
+
+  if (!cleanedName) return email
+
+  return `${cleanedName} <${email}>`
+}
+
 function getCustomerVisibleSiteName(
   config: EmailConfig,
   formName: string
@@ -80,6 +88,45 @@ export function buildInquirySubject({
   return "New website inquiry"
 }
 
+export function buildTestEmailMessage(config: EmailConfig): SubmissionNotificationMessage {
+  const siteName = sanitizeHeaderText(config.public_site_name)
+  const fromName =
+    sanitizeHeaderText(config.from_name) ||
+    siteName ||
+    "FormZero"
+  const fromEmail = config.from_email || config.notification_email
+  const toEmail = config.notification_to_email || config.notification_email
+  const subject = siteName
+    ? `${siteName} email settings test`
+    : "FormZero email settings test"
+  const scope = siteName ? ` for ${siteName}` : ""
+
+  return {
+    from: formatAddress(fromName, fromEmail),
+    to: toEmail,
+    subject,
+    text: `This test confirms that your FormZero SMTP settings can send email${scope}. Future form notifications will use this sender identity and notification inbox.`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email settings test</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; color: #222222;">
+  <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: 700;">
+    Email settings test passed
+  </p>
+  <p style="margin: 0; font-size: 15px; line-height: 1.7;">
+    This test confirms that your FormZero SMTP settings can send email${escapeHtml(scope)}. Future form notifications will use this sender identity and notification inbox.
+  </p>
+</body>
+</html>
+    `.trim(),
+  }
+}
+
 /**
  * Sends a test email to verify SMTP settings
  */
@@ -97,64 +144,7 @@ export async function sendTestEmail(
       },
     })
 
-    // Send test email
-    const info = await transporter.sendMail({
-      from: config.from_email || config.notification_email,
-      to: config.notification_to_email || config.notification_email,
-      subject: "FormZero - 测试邮件",
-      text: "这是一封来自 FormZero 的测试邮件。您的 SMTP 设置已正确配置！",
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Email</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #252525; padding: 32px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">
-              <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">
-                测试邮件
-              </h1>
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 16px 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                这是一封来自 <strong>FormZero</strong> 的测试邮件。
-              </p>
-              <p style="margin: 0; color: #252525; font-size: 16px; line-height: 1.6;">
-                您的 SMTP 设置已正确配置！
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #ebebeb;">
-              <p style="margin: 0; color: #8e8e8e; font-size: 14px;">
-                由 <strong style="color: #595959;">FormZero</strong> 发送
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `.trim(),
-    })
+    const info = await transporter.sendMail(buildTestEmailMessage(config))
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
@@ -237,7 +227,7 @@ export function buildSubmissionNotificationMessage(
   ].filter(Boolean)
 
   return {
-    from: `${fromName} <${fromEmail}>`,
+    from: formatAddress(fromName, fromEmail),
     to: toEmail,
     replyTo: senderEmail || undefined,
     subject: buildInquirySubject({

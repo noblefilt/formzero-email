@@ -22,6 +22,10 @@ export async function action({ context, request }: Route.ActionArgs) {
     const notification_email_password = formData.get("notification_email_password") as string
     const smtp_host = formData.get("smtp_host") as string
     const smtp_port = formData.get("smtp_port") as string
+    const public_site_name = ((formData.get("public_site_name") as string | null) || "").trim() || null
+    const from_name = ((formData.get("from_name") as string | null) || "").trim() || null
+    const from_email = ((formData.get("from_email") as string | null) || "").trim() || null
+    const notification_to_email = ((formData.get("notification_to_email") as string | null) || "").trim() || null
 
     // Validate required fields
     if (!notification_email || !notification_email_password || !smtp_host || !smtp_port) {
@@ -37,6 +41,10 @@ export async function action({ context, request }: Route.ActionArgs) {
       notification_email_password,
       smtp_host,
       smtp_port: parseInt(smtp_port, 10),
+      public_site_name,
+      from_name,
+      from_email,
+      notification_to_email,
     })
 
     if (result.success) {

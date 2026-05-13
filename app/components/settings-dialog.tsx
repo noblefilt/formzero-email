@@ -146,7 +146,16 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
   useEffect(() => {
     setTestPassed(false)
     setTestResultValid(false)
-  }, [email, password, smtpHost, smtpPort])
+  }, [
+    email,
+    password,
+    smtpHost,
+    smtpPort,
+    publicSiteName,
+    fromName,
+    fromEmail,
+    notificationToEmail,
+  ])
 
   useEffect(() => {
     if (clearFetcher.state === "idle" && clearFetcher.data?.success) {
@@ -173,6 +182,10 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
     formData.append("notification_email_password", password)
     formData.append("smtp_host", smtpHost)
     formData.append("smtp_port", smtpPort)
+    formData.append("public_site_name", publicSiteName)
+    formData.append("from_name", fromName)
+    formData.append("from_email", fromEmail)
+    formData.append("notification_to_email", notificationToEmail)
 
     testFetcher.submit(formData, {
       method: "post",

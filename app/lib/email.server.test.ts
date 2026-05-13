@@ -1,7 +1,43 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { buildSubmissionNotificationMessage } from "./email.server"
+import {
+  buildSubmissionNotificationMessage,
+  buildTestEmailMessage,
+} from "./email.server"
+
+test("test email uses the configured public identity and notification inbox", () => {
+  const message = buildTestEmailMessage({
+    notification_email: "smtp@example.com",
+    notification_email_password: "secret",
+    smtp_host: "smtp.example.com",
+    smtp_port: 465,
+    public_site_name: "Canada Fishing Licence",
+    from_name: "Canada Fishing Licence",
+    from_email: "contact@canadafishinglicence.com",
+    notification_to_email: "operator@example.com",
+  })
+
+  assert.equal(message.to, "operator@example.com")
+  assert.equal(message.from, "Canada Fishing Licence <contact@canadafishinglicence.com>")
+  assert.equal(message.subject, "Canada Fishing Licence email settings test")
+  assert.doesNotMatch(message.subject, /[\u4e00-\u9fff]/)
+  assert.doesNotMatch(message.text, /[\u4e00-\u9fff]/)
+  assert.doesNotMatch(message.html, /[\u4e00-\u9fff]/)
+})
+
+test("test email keeps legacy SMTP settings compatible", () => {
+  const message = buildTestEmailMessage({
+    notification_email: "smtp@example.com",
+    notification_email_password: "secret",
+    smtp_host: "smtp.example.com",
+    smtp_port: 465,
+  })
+
+  assert.equal(message.to, "smtp@example.com")
+  assert.equal(message.from, "FormZero <smtp@example.com>")
+  assert.equal(message.subject, "FormZero email settings test")
+})
 
 test("submission notification email behaves like a direct replyable message", () => {
   const message = buildSubmissionNotificationMessage(

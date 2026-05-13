@@ -136,6 +136,14 @@ test("notification email identity separates customer-visible fields from SMTP cr
     join(process.cwd(), "app", "routes", "settings.notifications.tsx"),
     "utf8"
   )
+  const settingsTestRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "settings.notifications.test.tsx"),
+    "utf8"
+  )
+  const settingsDialog = readFileSync(
+    join(process.cwd(), "app", "components", "settings-dialog.tsx"),
+    "utf8"
+  )
 
   assert.match(intakeRoute, /public_site_name/)
   assert.match(intakeRoute, /from_email/)
@@ -143,5 +151,14 @@ test("notification email identity separates customer-visible fields from SMTP cr
   assert.match(integrationRoute, /Public site name/)
   assert.match(integrationRoute, /Notification inbox/)
   assert.match(integrationRoute, /From email/)
+  assert.match(integrationRoute, /formData\.append\("public_site_name"/)
+  assert.match(integrationRoute, /formData\.append\("from_email"/)
+  assert.match(integrationRoute, /formData\.append\("notification_to_email"/)
   assert.match(settingsRoute, /notification_to_email/)
+  assert.match(settingsTestRoute, /public_site_name/)
+  assert.match(settingsTestRoute, /from_email/)
+  assert.match(settingsTestRoute, /notification_to_email/)
+  assert.match(settingsDialog, /formData\.append\("public_site_name"/)
+  assert.match(settingsDialog, /formData\.append\("from_email"/)
+  assert.match(settingsDialog, /formData\.append\("notification_to_email"/)
 })
