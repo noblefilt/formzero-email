@@ -259,6 +259,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
           notification_email_password,
           smtp_host,
           smtp_port,
+          public_site_name,
+          from_name,
+          from_email,
+          notification_to_email,
           allowed_origins,
           webhook_url,
           webhook_secret,
@@ -273,6 +277,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       notification_email_password: string | null
       smtp_host: string | null
       smtp_port: number | null
+      public_site_name: string | null
+      from_name: string | null
+      from_email: string | null
+      notification_to_email: string | null
       allowed_origins: string | null
       webhook_url: string | null
       webhook_secret: string | null
@@ -311,6 +319,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
               formSettings.notification_email_password || "",
             smtp_host: formSettings.smtp_host || "",
             smtp_port: formSettings.smtp_port || 587,
+            public_site_name: formSettings.public_site_name || "",
+            from_name: formSettings.from_name || "",
+            from_email: formSettings.from_email || "",
+            notification_to_email: formSettings.notification_to_email || "",
           }
         : null,
     allowedOrigins: formSettings?.allowed_origins || "",
@@ -330,7 +342,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (request.method === "DELETE") {
     await database
       .prepare(
-        "UPDATE forms SET notification_email = NULL, notification_email_password = NULL, smtp_host = NULL, smtp_port = NULL WHERE id = ?"
+        "UPDATE forms SET notification_email = NULL, notification_email_password = NULL, smtp_host = NULL, smtp_port = NULL, public_site_name = NULL, from_name = NULL, from_email = NULL, notification_to_email = NULL WHERE id = ?"
       )
       .bind(params.formId)
       .run()
@@ -579,6 +591,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   ) as string
   const smtp_host = formData.get("smtp_host") as string
   const smtp_port = formData.get("smtp_port") as string
+  const public_site_name = ((formData.get("public_site_name") as string | null) || "").trim() || null
+  const from_name = ((formData.get("from_name") as string | null) || "").trim() || null
+  const from_email = ((formData.get("from_email") as string | null) || "").trim() || null
+  const notification_to_email = ((formData.get("notification_to_email") as string | null) || "").trim() || null
 
   if (
     !notification_email ||
@@ -591,13 +607,17 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 
   await database
     .prepare(
-      "UPDATE forms SET notification_email = ?, notification_email_password = ?, smtp_host = ?, smtp_port = ? WHERE id = ?"
+      "UPDATE forms SET notification_email = ?, notification_email_password = ?, smtp_host = ?, smtp_port = ?, public_site_name = ?, from_name = ?, from_email = ?, notification_to_email = ? WHERE id = ?"
     )
     .bind(
       notification_email,
       notification_email_password,
       smtp_host,
       parseInt(smtp_port, 10),
+      public_site_name,
+      from_name,
+      from_email,
+      notification_to_email,
       params.formId
     )
     .run()
@@ -1749,6 +1769,10 @@ function FormEmailSettings({
     notification_email_password: string
     smtp_host: string
     smtp_port: number
+    public_site_name: string
+    from_name: string
+    from_email: string
+    notification_to_email: string
   } | null
 }) {
   const saveFetcher = useFetcher<{ success?: boolean; error?: string }>()
@@ -1762,6 +1786,14 @@ function FormEmailSettings({
   const [smtpHost, setSmtpHost] = useState(formEmail?.smtp_host || "")
   const [smtpPort, setSmtpPort] = useState(
     formEmail?.smtp_port?.toString() || ""
+  )
+  const [publicSiteName, setPublicSiteName] = useState(
+    formEmail?.public_site_name || ""
+  )
+  const [fromName, setFromName] = useState(formEmail?.from_name || "")
+  const [fromEmail, setFromEmail] = useState(formEmail?.from_email || "")
+  const [notificationToEmail, setNotificationToEmail] = useState(
+    formEmail?.notification_to_email || ""
   )
   const [testPassed, setTestPassed] = useState(!!formEmail)
 
@@ -1797,6 +1829,10 @@ function FormEmailSettings({
       setPassword("")
       setSmtpHost("")
       setSmtpPort("")
+      setPublicSiteName("")
+      setFromName("")
+      setFromEmail("")
+      setNotificationToEmail("")
       setTestPassed(false)
     }
   }, [clearFetcher.state, clearFetcher.data])
@@ -1818,7 +1854,7 @@ function FormEmailSettings({
       <CardHeader>
         <CardTitle>邮件通知</CardTitle>
         <CardDescription>
-          覆盖此表单的全局邮件设置。留空则使用全局设置。
+          覆盖此表单的全局邮件身份。客户可能看到的标题、From 和回复链路会使用这里的设置。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -1838,6 +1874,71 @@ function FormEmailSettings({
                 onChange={(event) => setEmail(event.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                SMTP 登录邮箱。客户可见 From 和通知收件箱可单独设置。
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="form-public-site-name">Public site name</Label>
+                <Input
+                  id="form-public-site-name"
+                  name="public_site_name"
+                  placeholder="Canada Fishing Licence"
+                  value={publicSiteName}
+                  onChange={(event) => setPublicSiteName(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  用于客户可见标题，例如 Canada Fishing Licence inquiry from Jane.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="form-notification-to-email">
+                  Notification inbox
+                </Label>
+                <Input
+                  id="form-notification-to-email"
+                  name="notification_to_email"
+                  type="email"
+                  placeholder="owner@example.com"
+                  value={notificationToEmail}
+                  onChange={(event) => setNotificationToEmail(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  新提交通知发送到这里；留空则发送到 SMTP 登录邮箱。
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="form-from-name">From name</Label>
+                <Input
+                  id="form-from-name"
+                  name="from_name"
+                  placeholder="Canada Fishing Licence"
+                  value={fromName}
+                  onChange={(event) => setFromName(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  预留给品牌发件模式；当前通知仍优先显示提交者姓名。
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="form-from-email">From email</Label>
+                <Input
+                  id="form-from-email"
+                  name="from_email"
+                  type="email"
+                  placeholder="contact@example.com"
+                  value={fromEmail}
+                  onChange={(event) => setFromEmail(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  邮件头里的发件地址；留空则使用 SMTP 登录邮箱。
+                </p>
+              </div>
             </div>
 
             {domain && (

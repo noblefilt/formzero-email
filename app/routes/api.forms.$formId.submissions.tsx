@@ -78,7 +78,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   try {
     // Check if form exists
     const form = await db
-      .prepare("SELECT id, name, allowed_origins, notification_email, notification_email_password, smtp_host, smtp_port, webhook_url, webhook_secret, server_token_hash FROM forms WHERE id = ?")
+      .prepare("SELECT id, name, allowed_origins, notification_email, notification_email_password, smtp_host, smtp_port, public_site_name, from_name, from_email, notification_to_email, webhook_url, webhook_secret, server_token_hash FROM forms WHERE id = ?")
       .bind(formId)
       .first<{
         id: string
@@ -88,6 +88,10 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         notification_email_password: string | null
         smtp_host: string | null
         smtp_port: number | null
+        public_site_name: string | null
+        from_name: string | null
+        from_email: string | null
+        notification_to_email: string | null
         webhook_url: string | null
         webhook_secret: string | null
         server_token_hash: string | null
@@ -302,18 +306,26 @@ export async function action({ request, params, context }: Route.ActionArgs) {
               notification_email_password: form.notification_email_password,
               smtp_host: form.smtp_host,
               smtp_port: form.smtp_port,
+              public_site_name: form.public_site_name,
+              from_name: form.from_name,
+              from_email: form.from_email,
+              notification_to_email: form.notification_to_email,
             };
           } else {
             // Fall back to global settings
             const globalSettings = await db
               .prepare(
-                "SELECT notification_email, notification_email_password, smtp_host, smtp_port FROM settings WHERE id = 'global'"
+                "SELECT notification_email, notification_email_password, smtp_host, smtp_port, public_site_name, from_name, from_email, notification_to_email FROM settings WHERE id = 'global'"
               )
               .first<{
                 notification_email: string | null
                 notification_email_password: string | null
                 smtp_host: string | null
                 smtp_port: number | null
+                public_site_name: string | null
+                from_name: string | null
+                from_email: string | null
+                notification_to_email: string | null
               }>();
 
             if (
@@ -327,6 +339,10 @@ export async function action({ request, params, context }: Route.ActionArgs) {
                 notification_email_password: globalSettings.notification_email_password,
                 smtp_host: globalSettings.smtp_host,
                 smtp_port: globalSettings.smtp_port,
+                public_site_name: globalSettings.public_site_name,
+                from_name: globalSettings.from_name,
+                from_email: globalSettings.from_email,
+                notification_to_email: globalSettings.notification_to_email,
               };
             }
           }

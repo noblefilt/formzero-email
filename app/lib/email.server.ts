@@ -16,6 +16,70 @@ type SubmissionNotificationMessage = {
   html: string
 }
 
+const GENERIC_FORM_NAMES = new Set([
+  "contact",
+  "contact form",
+  "default",
+  "form",
+  "general",
+  "main form",
+  "website form",
+])
+
+function sanitizeHeaderText(value: string | null | undefined) {
+  if (!value) return null
+
+  const cleaned = value
+    .replace(/[\r\n]+/g, " ")
+    .replace(/["<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return cleaned || null
+}
+
+function getCustomerVisibleSiteName(
+  config: EmailConfig,
+  formName: string
+) {
+  const configuredSiteName = sanitizeHeaderText(config.public_site_name)
+  if (configuredSiteName) return configuredSiteName
+
+  const cleanedFormName = sanitizeHeaderText(formName)
+  if (!cleanedFormName) return null
+
+  if (GENERIC_FORM_NAMES.has(cleanedFormName.toLowerCase())) return null
+
+  return cleanedFormName
+}
+
+export function buildInquirySubject({
+  siteName,
+  senderName,
+  senderEmail,
+}: {
+  siteName?: string | null
+  senderName?: string | null
+  senderEmail?: string | null
+}) {
+  const cleanedSiteName = sanitizeHeaderText(siteName)
+  const cleanedSender = sanitizeHeaderText(senderName) || sanitizeHeaderText(senderEmail)
+
+  if (cleanedSiteName && cleanedSender) {
+    return `${cleanedSiteName} inquiry from ${cleanedSender}`
+  }
+
+  if (cleanedSender) {
+    return `New inquiry from ${cleanedSender}`
+  }
+
+  if (cleanedSiteName) {
+    return `${cleanedSiteName} inquiry`
+  }
+
+  return "New website inquiry"
+}
+
 /**
  * Sends a test email to verify SMTP settings
  */
@@ -35,8 +99,8 @@ export async function sendTestEmail(
 
     // Send test email
     const info = await transporter.sendMail({
-      from: config.notification_email,
-      to: config.notification_email,
+      from: config.from_email || config.notification_email,
+      to: config.notification_to_email || config.notification_email,
       subject: "FormZero - 测试邮件",
       text: "这是一封来自 FormZero 的测试邮件。您的 SMTP 设置已正确配置！",
       html: `
@@ -156,7 +220,15 @@ export function buildSubmissionNotificationMessage(
   const senderName =
     getSubmissionName(submission.data) || senderEmail || submission.formName
   const primaryMessage = getSubmissionMessage(submission.data)
-  const fromName = senderName.replace(/["<>]/g, "").trim() || submission.formName
+  const cleanSenderName = sanitizeHeaderText(senderName)
+  const siteName = getCustomerVisibleSiteName(config, submission.formName)
+  const fromName =
+    cleanSenderName ||
+    sanitizeHeaderText(config.from_name) ||
+    siteName ||
+    "Website inquiry"
+  const fromEmail = config.from_email || config.notification_email
+  const toEmail = config.notification_to_email || config.notification_email
 
   const textParts = [
     senderName,
@@ -165,10 +237,14 @@ export function buildSubmissionNotificationMessage(
   ].filter(Boolean)
 
   return {
-    from: `${fromName} <${config.notification_email}>`,
-    to: config.notification_email,
+    from: `${fromName} <${fromEmail}>`,
+    to: toEmail,
     replyTo: senderEmail || undefined,
-    subject: `来自 ${senderName} 的消息`,
+    subject: buildInquirySubject({
+      siteName,
+      senderName,
+      senderEmail,
+    }),
     text: textParts.join("\n\n"),
     html: `
 <!DOCTYPE html>

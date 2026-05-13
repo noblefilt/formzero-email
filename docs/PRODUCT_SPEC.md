@@ -80,6 +80,13 @@ lead-form messages from multiple websites without running a public CRM.
 Submission notification emails must behave like direct messages:
 
 - `Reply-To` points to the submitter email when available.
+- Customer-visible subjects are English by default, brand-scoped, and safe to
+  reuse when the operator replies from Gmail. They should use wording such as
+  `{Site Name} inquiry from {Sender Name}` and must not include Chinese UI copy,
+  `FormZero`, submission IDs, or internal system language.
+- Form email identity separates SMTP login credentials from public email
+  identity: the configured public site name, From address, and notification
+  inbox can differ while old single-address SMTP settings continue to work.
 - The visible email body shows only the submitter name, email, and message.
 - Source metadata such as `source`, `page_url`, UTM fields, redirects, and
   honeypot fields must not appear in the email body.

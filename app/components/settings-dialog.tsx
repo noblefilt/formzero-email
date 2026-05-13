@@ -69,6 +69,10 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
   const [password, setPassword] = useState(settings?.notification_email_password || "")
   const [smtpHost, setSmtpHost] = useState(settings?.smtp_host || "")
   const [smtpPort, setSmtpPort] = useState(settings?.smtp_port?.toString() || "")
+  const [publicSiteName, setPublicSiteName] = useState(settings?.public_site_name || "")
+  const [fromName, setFromName] = useState(settings?.from_name || "")
+  const [fromEmail, setFromEmail] = useState(settings?.from_email || "")
+  const [notificationToEmail, setNotificationToEmail] = useState(settings?.notification_to_email || "")
 
   // Initialize emailDomain and smtpConfig from settings on mount
   const initialEmail = settings?.notification_email || ""
@@ -87,6 +91,10 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
       setPassword(settings.notification_email_password || "")
       setSmtpHost(settings.smtp_host || "")
       setSmtpPort(settings.smtp_port?.toString() || "")
+      setPublicSiteName(settings.public_site_name || "")
+      setFromName(settings.from_name || "")
+      setFromEmail(settings.from_email || "")
+      setNotificationToEmail(settings.notification_to_email || "")
     }
   }, [settings])
 
@@ -146,6 +154,10 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
       setPassword("")
       setSmtpHost("")
       setSmtpPort("")
+      setPublicSiteName("")
+      setFromName("")
+      setFromEmail("")
+      setNotificationToEmail("")
       setEmailDomain(null)
       setSmtpConfig(null)
       setTestPassed(false)
@@ -207,8 +219,68 @@ export function SettingsDialog({ open, onOpenChange, settings }: SettingsDialogP
                     required
                   />
                   <p className="text-sm text-muted-foreground">
-                    此邮箱将用于发送和接收通知
+                    SMTP 登录邮箱。客户可见的发件地址和你的收件箱可在下面单独设置。
                   </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="public-site-name">Public site name</Label>
+                    <Input
+                      id="public-site-name"
+                      name="public_site_name"
+                      placeholder="Canada Fishing Licence"
+                      value={publicSiteName}
+                      onChange={(e) => setPublicSiteName(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      用于客户可见标题，例如 Canada Fishing Licence inquiry from Jane.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notification-to-email">Notification inbox</Label>
+                    <Input
+                      id="notification-to-email"
+                      name="notification_to_email"
+                      type="email"
+                      placeholder="owner@example.com"
+                      value={notificationToEmail}
+                      onChange={(e) => setNotificationToEmail(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      新提交通知发送到这里；留空则发送到 SMTP 登录邮箱。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="from-name">From name</Label>
+                    <Input
+                      id="from-name"
+                      name="from_name"
+                      placeholder="Canada Fishing Licence"
+                      value={fromName}
+                      onChange={(e) => setFromName(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      预留给品牌发件模式；当前通知仍优先显示提交者姓名。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="from-email">From email</Label>
+                    <Input
+                      id="from-email"
+                      name="from_email"
+                      type="email"
+                      placeholder="contact@example.com"
+                      value={fromEmail}
+                      onChange={(e) => setFromEmail(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      邮件头里的发件地址；留空则使用 SMTP 登录邮箱。
+                    </p>
+                  </div>
                 </div>
 
                 {emailDomain && (

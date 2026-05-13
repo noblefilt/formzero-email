@@ -122,3 +122,26 @@ test("submission intake suppresses detected spam before storage side effects", (
   assert.match(intakeRoute, /INSERT INTO submissions/)
   assert.doesNotMatch(intakeRoute, /COALESCE\(is_spam, 0\) = 1\s+AND created_at/)
 })
+
+test("notification email identity separates customer-visible fields from SMTP credentials", () => {
+  const intakeRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "api.forms.$formId.submissions.tsx"),
+    "utf8"
+  )
+  const integrationRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "forms.$formId.integration.tsx"),
+    "utf8"
+  )
+  const settingsRoute = readFileSync(
+    join(process.cwd(), "app", "routes", "settings.notifications.tsx"),
+    "utf8"
+  )
+
+  assert.match(intakeRoute, /public_site_name/)
+  assert.match(intakeRoute, /from_email/)
+  assert.match(intakeRoute, /notification_to_email/)
+  assert.match(integrationRoute, /Public site name/)
+  assert.match(integrationRoute, /Notification inbox/)
+  assert.match(integrationRoute, /From email/)
+  assert.match(settingsRoute, /notification_to_email/)
+})
