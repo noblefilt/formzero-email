@@ -22,6 +22,7 @@ export default [
   route("/sitemap.xml", "routes/sitemap.xml.ts"),
 
   route("/api/auth/*", "routes/api.auth.$.tsx"),
+  route("/api/mcp/*", "routes/api.mcp.$.tsx"),
   route("/api/forms/:formId/submissions", "routes/api.forms.$formId.submissions.tsx"),
 
   route("/success", "routes/success.tsx"),

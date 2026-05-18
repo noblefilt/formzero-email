@@ -6,6 +6,9 @@
 		"build": "mkdir -p .wrangler/home && HOME=$PWD/.wrangler/home react-router build",
 		"ci:ux": "npm run lint:ux && npm run test:routes && npm run test:unit",
 		"migrate": "yes Y | wrangler d1 migrations apply DB",
+		"mcp:build": "tsc -p mcp/formzero-mcp-server/tsconfig.json",
+		"mcp:start": "node mcp/formzero-mcp-server/dist/index.js",
+		"mcp:dev": "tsx mcp/formzero-mcp-server/src/index.ts",
 		"seed": "yes Y | wrangler d1 execute DB --file seed.sql",
 		"cf-typegen": "mkdir -p .wrangler/home && HOME=$PWD/.wrangler/home wrangler types",
 		"deploy": "npm run build && npm run migrate -- --remote && wrangler deploy",
@@ -14,7 +17,7 @@
 		"lint:ux": "eslint eslint.config.mjs playwright.config.ts tests tools",
 		"postinstall": "npm run cf-typegen",
 		"preview": "npm run build && vite preview",
-		"test:unit": "tsx app/lib/submission-spam.test.ts && tsx app/lib/submission-display.test.ts && tsx app/lib/email.server.test.ts && tsx tests/crawl-policy.test.ts && tsx tests/form-navigation-contract.test.ts && tsx tests/submission-management-contract.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/submission-action.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/spam-delete-action.test.ts",
+		"test:unit": "tsx app/lib/submission-spam.test.ts && tsx app/lib/submission-display.test.ts && tsx app/lib/email.server.test.ts && tsx tests/crawl-policy.test.ts && tsx tests/form-navigation-contract.test.ts && tsx tests/submission-management-contract.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/submission-action.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/spam-delete-action.test.ts && tsx --tsconfig tsconfig.cloudflare.json tests/mcp-api-route.test.ts",
 		"test:routes": "tsx tests/route-contract.test.ts",
 		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b",
 		"better-auth-generate": "@better-auth/cli@latest generate --output migrations/change-this-name.sql --config better-auth/config.ts --y",
@@ -22,6 +25,7 @@
 		"env:prod": "dotenv -e .dev.vars.production --"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@radix-ui/react-avatar": "^1.1.11",
 		"@radix-ui/react-collapsible": "^1.1.12",
 		"@radix-ui/react-dialog": "^1.1.15",
@@ -48,7 +52,8 @@
 		"react-dom": "^19.2.4",
 		"react-router": "^7.13.0",
 		"recharts": "^2.15.4",
-		"tailwind-merge": "^3.4.0"
+		"tailwind-merge": "^3.4.0",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.21.0",

@@ -31,6 +31,7 @@ lead-form messages from multiple websites without running a public CRM.
 
 - Private authenticated dashboard.
 - Form submission API.
+- Read-only MCP-facing admin API for inquiry analysis.
 - Form integration instructions.
 - Notification settings and test email.
 - Replyable submission notification emails.
@@ -74,6 +75,7 @@ lead-form messages from multiple websites without running a public CRM.
 - Current form pages expose a confirmed delete action for retiring forms that
   are no longer in use.
 - `/settings/notifications` controls notification settings.
+- `/api/mcp/*` exposes read-only JSON for MCP clients after token auth.
 
 ## Notification Contract
 
@@ -143,11 +145,28 @@ Implementation should remain simple and modular.
 Preferred ownership:
 
 - `app/routes/api.forms.$formId.submissions.tsx` owns submission intake.
+- `app/routes/api.mcp.$.tsx` owns read-only MCP JSON access.
 - `app/routes/forms.$formId.submissions.tsx` owns normal inbox actions.
 - `app/routes/forms.spam.tsx` owns spam review.
 - `app/lib/email.server.ts` owns notification email rendering and delivery.
 - `app/lib/submission-spam.ts` owns spam classification and submission parsing helpers.
 - `app/lib/submission-display.ts` owns which submitted fields are shown to the operator.
+- `app/lib/mcp-read.server.ts` owns MCP-safe formatting, token validation, and query summaries.
+
+## MCP Read API Contract
+
+The MCP read API exists so an external agent can understand inquiry trends and
+specific inquiry content without gaining write access to the operator inbox.
+
+- Authentication is token-based through a dedicated `FORMZERO_MCP_TOKEN` secret.
+- The API is read-only and must reject non-`GET` methods.
+- Exposed surfaces are limited to forms, submissions, spam, and safe settings
+  summaries.
+- Passwords, webhook secrets, server tokens, and other write-capable secrets
+  must never be returned.
+- Submission payloads should be normalized into operator-readable fields and
+  must keep tracking metadata such as `source`, `page_url`, UTM fields,
+  redirects, and honeypot fields out of the visible field list.
 
 When code and this spec diverge, update the spec in the same change or stop and
 resolve the conflict.
